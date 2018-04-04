@@ -20,8 +20,10 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
+	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/oci"
 	"github.com/google/shlex"
+	specs "github.com/opencontainers/runtime-spec/specs-go"
 )
 
 const (
@@ -59,7 +61,7 @@ var (
 	// https://commondatastorage.googleapis.com/<bucket>/<object>
 	gsHTTPRegex3 = regexp.MustCompile(fmt.Sprintf(`^http[s]?://(?:commondata)?storage\.googleapis\.com/%s/%s$`, bucket, object))
 
-	logger = log.New(os.Stdout, "", log.LstdFlags|log.Lmicroseconds)
+	logger = log.New(os.Stdout, "", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
 )
 
 type attributesJSON struct {
@@ -227,32 +229,82 @@ func watchMetadata(ctx context.Context) (*attributesJSON, error) {
 func main() {
 	var info syscall.Sysinfo_t
 	if err := syscall.Sysinfo(&info); err != nil {
-		logger.Println("Error from Sysinfo:", err)
+		logger.Fatalln("Error from Sysinfo:", err)
 	}
 
 	logger.Printf("[%d] Starting c-nix init...", info.Uptime)
-	ctx := context.Background()
+
+	logger.Println("mounting proc")
+	if err := syscall.Mount("proc", "/proc", "proc", 0, "ro"); err != nil {
+		logger.Fatalln(err)
+	}
+
+	logger.Println("starting containerd")
+	cmd := exec.Command("/bin/containerd")
+	cmd.Env = []string{"PATH=/bin"}
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		logger.Fatalln(err)
+	}
+
+	go func() {
+		if err := cmd.Wait(); err != nil {
+			logger.Fatalln(err)
+		}
+	}()
 
 	logger.Println("creating client")
 	client, err := containerd.New("/run/containerd/containerd.sock")
 	if err != nil {
-		logger.Println(err)
+		logger.Fatalln(err)
 	}
 	defer client.Close()
 
+	ctx := namespaces.WithNamespace(context.Background(), "caaos")
+
+	id := "docker.io/library/busybox:latest"
+
 	logger.Println("pulling image")
-	image, err := client.Pull(ctx, "docker.io/library/busybox:latest")
+	img, err := client.Pull(ctx, id, containerd.WithPullUnpack)
 	if err != nil {
 		logger.Println(err)
+		time.Sleep(5 * time.Second)
+		return
 	}
 
-	container, err := client.NewContainer(ctx, "my-container", containerd.WithNewSpec(oci.WithImageConfig(image)))
-	defer container.Delete(ctx)
+	rnd := fmt.Sprintf("%d", time.Now().Unix())
+
+	logger.Println("creating container")
+	spec := containerd.WithNewSpec(
+		oci.WithImageConfig(img),
+		oci.WithHostNamespace(specs.NetworkNamespace),
+		oci.WithHostHostsFile,
+		oci.WithHostResolvconf,
+	)
+
+	container, err := client.NewContainer(
+		ctx,
+		rnd,
+		containerd.WithImage(img),
+		containerd.WithNewSnapshot(rnd, img),
+		spec,
+	)
+	if err != nil {
+		logger.Println(err)
+		time.Sleep(5 * time.Second)
+		return
+	}
+	defer container.Delete(ctx, containerd.WithSnapshotCleanup)
 
 	// create a new task
 	logger.Println("creating task")
-	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStdio))
-	defer task.Delete(ctx)
+	task, err := container.NewTask(ctx, cio.Stdio)
+	if err != nil {
+		logger.Println(err)
+		time.Sleep(5 * time.Second)
+		return
+	}
 
 	// the task is now running and has a pid that can be use to setup networking
 	// or other runtime settings outside of containerd
@@ -260,19 +312,44 @@ func main() {
 
 	fmt.Println(pid)
 
+	// Setup wait channel
+	statusC, err := task.Wait(ctx)
+	if err != nil {
+		logger.Println(err)
+		time.Sleep(5 * time.Second)
+		return
+	}
+
 	// start the redis-server process inside the container
 	logger.Println("running task")
 	if err := task.Start(ctx); err != nil {
 		logger.Println(err)
+		time.Sleep(5 * time.Second)
+		return
 	}
 
 	// wait for the task to exit and get the exit status
-	status, err := task.Wait(ctx)
+	logger.Println("waiting...")
+	status := <-statusC
+	code, _, err := status.Result()
 	if err != nil {
+		logger.Println(err)
+		time.Sleep(5 * time.Second)
+		return
+	}
+
+	fmt.Println(code)
+
+	logger.Println("deleting task")
+	if _, err := task.Delete(ctx); err != nil {
 		logger.Println(err)
 	}
 
-	fmt.Println(status)
+	// kill the process and get the exit status
+	//if err := task.Kill(ctx, syscall.SIGTERM); err != nil {
+	//	logger.Println(err)
+	//}
+
 	return
 
 	for {
