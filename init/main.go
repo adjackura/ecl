@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,6 +25,7 @@ import (
 	"github.com/containerd/containerd/oci"
 	"github.com/google/shlex"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -61,7 +63,7 @@ var (
 	// https://commondatastorage.googleapis.com/<bucket>/<object>
 	gsHTTPRegex3 = regexp.MustCompile(fmt.Sprintf(`^http[s]?://(?:commondata)?storage\.googleapis\.com/%s/%s$`, bucket, object))
 
-	logger = log.New(os.Stdout, "", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
+	logger = log.New(os.Stdout, "[caaos init]: ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
 )
 
 type attributesJSON struct {
@@ -226,18 +228,214 @@ func watchMetadata(ctx context.Context) (*attributesJSON, error) {
 	}
 }
 
+const (
+	nodev    = unix.MS_NODEV
+	noexec   = unix.MS_NOEXEC
+	nosuid   = unix.MS_NOSUID
+	readonly = unix.MS_RDONLY
+	rec      = unix.MS_REC
+	relatime = unix.MS_RELATIME
+	remount  = unix.MS_REMOUNT
+	shared   = unix.MS_SHARED
+)
+
+func mount(source string, target string, fstype string, flags uintptr, data string) {
+	err := unix.Mount(source, target, fstype, flags, data)
+	if err != nil {
+		logger.Printf("error mounting %s to %s: %v", source, target, err)
+	}
+}
+
+func mkdir(path string, perm os.FileMode) {
+	err := os.MkdirAll(path, perm)
+	if err != nil {
+		logger.Printf("error making directory %s: %v", path, err)
+	}
+}
+
+func symlink(oldpath string, newpath string) {
+	err := unix.Symlink(oldpath, newpath)
+	if err != nil {
+		logger.Printf("error making symlink %s: %v", newpath, err)
+	}
+}
+
+func cgroupList() []string {
+	list := []string{}
+	f, err := os.Open("/proc/cgroups")
+	if err != nil {
+		logger.Printf("cannot open /proc/cgroups: %v", err)
+		return list
+	}
+	defer f.Close()
+	reader := csv.NewReader(f)
+	// tab delimited
+	reader.Comma = '\t'
+	// four fields
+	reader.FieldsPerRecord = 4
+	cgroups, err := reader.ReadAll()
+	if err != nil {
+		logger.Printf("cannot parse /proc/cgroups: %v", err)
+		return list
+	}
+	for _, cg := range cgroups {
+		// see if enabled
+		if cg[3] == "1" {
+			list = append(list, cg[0])
+		}
+	}
+	return list
+}
+
+func write(path string, value string) {
+	err := ioutil.WriteFile(path, []byte(value), 0600)
+	if err != nil {
+		logger.Printf("cannot write to %s: %v", path, err)
+	}
+}
+
+func mounts() {
+	mkdir("/mnt", 0755)
+	mkdir("/root", 0700)
+	mkdir("/cntr", 0755)
+
+	// mount proc filesystem
+	mkdir("/proc", 0755)
+	mount("proc", "/proc", "proc", nodev|nosuid|noexec|relatime, "")
+
+	// mount tmpfs for /tmp and /run
+	mkdir("/run", 0755)
+	mount("tmpfs", "/run", "tmpfs", nodev|nosuid|noexec|relatime, "size=10%,mode=755")
+	mkdir("/tmp", 1777)
+	mount("tmpfs", "/tmp", "tmpfs", nodev|nosuid|noexec|relatime, "size=10%,mode=1777")
+
+	// mount tmpfs for /var. This may be overmounted with a persistent filesystem later
+	mkdir("/var", 0755)
+	mount("tmpfs", "/var", "tmpfs", nodev|nosuid|noexec|relatime, "size=50%,mode=755")
+	// add standard directories in /var
+	mkdir("/var/cache", 0755)
+	mkdir("/var/empty", 0555)
+	mkdir("/var/lib", 0755)
+	mkdir("/var/local", 0755)
+	mkdir("/var/lock", 0755)
+	mkdir("/var/log", 0755)
+	mkdir("/var/opt", 0755)
+	mkdir("/var/spool", 0755)
+	mkdir("/var/tmp", 01777)
+	symlink("/run", "/var/run")
+
+	// make standard symlinks
+	symlink("/proc/self/fd", "/dev/fd")
+	symlink("/proc/self/fd/0", "/dev/stdin")
+	symlink("/proc/self/fd/1", "/dev/stdout")
+	symlink("/proc/self/fd/2", "/dev/stderr")
+	symlink("/proc/kcore", "/dev/kcore")
+
+	// sysfs
+	mkdir("/sys", 0755)
+	mount("sysfs", "/sys", "sysfs", noexec|nosuid|nodev, "")
+
+	// mount cgroup root tmpfs
+	mount("cgroup_root", "/sys/fs/cgroup", "tmpfs", nodev|noexec|nosuid, "mode=755,size=10m")
+	// mount cgroups filesystems for all enabled cgroups
+	for _, cg := range cgroupList() {
+		path := filepath.Join("/sys/fs/cgroup", cg)
+		mkdir(path, 0555)
+		mount(cg, path, "cgroup", noexec|nosuid|nodev, cg)
+	}
+
+	// use hierarchy for memory
+	write("/sys/fs/cgroup/memory/memory.use_hierarchy", "1")
+}
+
+func runContainer(ctx context.Context, client *containerd.Client, id string) error {
+	logger.Println("pulling image")
+	img, err := client.Pull(ctx, id, containerd.WithPullUnpack)
+	if err != nil {
+		return err
+	}
+
+	rnd := fmt.Sprintf("%d", time.Now().Unix())
+
+	logger.Println("creating container")
+	spec := containerd.WithNewSpec(
+		oci.WithImageConfig(img),
+		oci.WithHostNamespace(specs.NetworkNamespace),
+		oci.WithHostHostsFile,
+		oci.WithHostResolvconf,
+		//oci.WithRootFSPath("/cntr"),
+	)
+
+	container, err := client.NewContainer(
+		ctx,
+		rnd,
+		//containerd.WithImage(img),
+		containerd.WithNewSnapshot(rnd, img),
+		spec,
+	)
+	if err != nil {
+		return err
+	}
+	defer container.Delete(ctx, containerd.WithSnapshotCleanup)
+
+	// create a new task
+	logger.Println("creating task")
+	task, err := container.NewTask(ctx, cio.Stdio)
+	if err != nil {
+		return err
+	}
+
+	// the task is now running and has a pid that can be use to setup networking
+	// or other runtime settings outside of containerd
+	pid := task.Pid()
+
+	fmt.Println(pid)
+
+	// Setup wait channel
+	statusC, err := task.Wait(ctx)
+	if err != nil {
+		return err
+	}
+
+	// start the redis-server process inside the container
+	logger.Println("running task")
+	if err := task.Start(ctx); err != nil {
+		return err
+	}
+
+	// wait for the task to exit and get the exit status
+	logger.Println("waiting...")
+	status := <-statusC
+	code, _, err := status.Result()
+	if err != nil {
+		return err
+	}
+
+	logger.Println("return code:", code)
+
+	logger.Println("deleting task")
+	if _, err := task.Delete(ctx); err != nil {
+		logger.Println(err)
+	}
+
+	// kill the process and get the exit status
+	//if err := task.Kill(ctx, syscall.SIGTERM); err != nil {
+	//	logger.Println(err)
+	//}
+
+	return nil
+}
+
 func main() {
 	var info syscall.Sysinfo_t
 	if err := syscall.Sysinfo(&info); err != nil {
 		logger.Fatalln("Error from Sysinfo:", err)
 	}
 
-	logger.Printf("[%d] Starting c-nix init...", info.Uptime)
+	logger.Printf("[%d] Starting caaos...", info.Uptime)
 
-	logger.Println("mounting proc")
-	if err := syscall.Mount("proc", "/proc", "proc", 0, "ro"); err != nil {
-		logger.Fatalln(err)
-	}
+	logger.Println("mounting all the things...")
+	mounts()
 
 	logger.Println("starting containerd")
 	cmd := exec.Command("/bin/containerd")
@@ -263,92 +461,12 @@ func main() {
 
 	ctx := namespaces.WithNamespace(context.Background(), "caaos")
 
-	id := "docker.io/library/busybox:latest"
-
-	logger.Println("pulling image")
-	img, err := client.Pull(ctx, id, containerd.WithPullUnpack)
-	if err != nil {
-		logger.Println(err)
-		time.Sleep(5 * time.Second)
-		return
+	for {
+		if err := runContainer(ctx, client, "docker.io/library/busybox:latest"); err != nil {
+			logger.Println("Error:", err)
+			time.Sleep(5 * time.Second)
+		}
 	}
-
-	rnd := fmt.Sprintf("%d", time.Now().Unix())
-
-	logger.Println("creating container")
-	spec := containerd.WithNewSpec(
-		oci.WithImageConfig(img),
-		oci.WithHostNamespace(specs.NetworkNamespace),
-		oci.WithHostHostsFile,
-		oci.WithHostResolvconf,
-	)
-
-	container, err := client.NewContainer(
-		ctx,
-		rnd,
-		containerd.WithImage(img),
-		containerd.WithNewSnapshot(rnd, img),
-		spec,
-	)
-	if err != nil {
-		logger.Println(err)
-		time.Sleep(5 * time.Second)
-		return
-	}
-	defer container.Delete(ctx, containerd.WithSnapshotCleanup)
-
-	// create a new task
-	logger.Println("creating task")
-	task, err := container.NewTask(ctx, cio.Stdio)
-	if err != nil {
-		logger.Println(err)
-		time.Sleep(5 * time.Second)
-		return
-	}
-
-	// the task is now running and has a pid that can be use to setup networking
-	// or other runtime settings outside of containerd
-	pid := task.Pid()
-
-	fmt.Println(pid)
-
-	// Setup wait channel
-	statusC, err := task.Wait(ctx)
-	if err != nil {
-		logger.Println(err)
-		time.Sleep(5 * time.Second)
-		return
-	}
-
-	// start the redis-server process inside the container
-	logger.Println("running task")
-	if err := task.Start(ctx); err != nil {
-		logger.Println(err)
-		time.Sleep(5 * time.Second)
-		return
-	}
-
-	// wait for the task to exit and get the exit status
-	logger.Println("waiting...")
-	status := <-statusC
-	code, _, err := status.Result()
-	if err != nil {
-		logger.Println(err)
-		time.Sleep(5 * time.Second)
-		return
-	}
-
-	fmt.Println(code)
-
-	logger.Println("deleting task")
-	if _, err := task.Delete(ctx); err != nil {
-		logger.Println(err)
-	}
-
-	// kill the process and get the exit status
-	//if err := task.Kill(ctx, syscall.SIGTERM); err != nil {
-	//	logger.Println(err)
-	//}
 
 	return
 
