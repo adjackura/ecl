@@ -67,9 +67,11 @@ var (
 )
 
 type attributesJSON struct {
-	CmdURL     string `json:"cmd-url"`
-	CmdArgs    string `json:"cmd-args"`
-	StopOnExit bool   `json:"stop-on-exit,string"`
+	CmdURL        string `json:"cmd-url"`
+	CmdArgs       string `json:"cmd-args"`
+	ContainerID   string `json:"container-id"`
+	ContainerArgs string `json:"container-args"`
+	StopOnExit    bool   `json:"stop-on-exit,string"`
 }
 
 func downloadGSURL(ctx context.Context, bucket, object string, file *os.File) error {
@@ -348,7 +350,7 @@ func mounts() {
 	write("/sys/fs/cgroup/memory/memory.use_hierarchy", "1")
 }
 
-func runContainer(ctx context.Context, client *containerd.Client, id string) error {
+func runContainer(ctx context.Context, client *containerd.Client, id string, args []string) error {
 	logger.Println("pulling image")
 	img, err := client.Pull(ctx, id, containerd.WithPullUnpack)
 	if err != nil {
@@ -358,13 +360,19 @@ func runContainer(ctx context.Context, client *containerd.Client, id string) err
 	rnd := fmt.Sprintf("%d", time.Now().Unix())
 
 	logger.Println("creating container")
-	spec := containerd.WithNewSpec(
+	opts := []oci.SpecOpts{
 		oci.WithImageConfig(img),
 		oci.WithHostNamespace(specs.NetworkNamespace),
 		oci.WithHostHostsFile,
 		oci.WithHostResolvconf,
+		//oci.WithTTY,
+		//oci.WithPrivileged,
 		//oci.WithRootFSPath("/cntr"),
-	)
+	}
+	if len(args) > 0 {
+		opts = append(opts, oci.WithProcessArgs(args...))
+	}
+	spec := containerd.WithNewSpec(opts...)
 
 	container, err := client.NewContainer(
 		ctx,
@@ -427,12 +435,7 @@ func runContainer(ctx context.Context, client *containerd.Client, id string) err
 }
 
 func main() {
-	var info syscall.Sysinfo_t
-	if err := syscall.Sysinfo(&info); err != nil {
-		logger.Fatalln("Error from Sysinfo:", err)
-	}
-
-	logger.Printf("[%d] Starting caaos...", info.Uptime)
+	logger.Println("Starting caaos...")
 
 	logger.Println("mounting all the things...")
 	mounts()
@@ -462,10 +465,43 @@ func main() {
 	ctx := namespaces.WithNamespace(context.Background(), "caaos")
 
 	for {
-		if err := runContainer(ctx, client, "docker.io/library/busybox:latest"); err != nil {
+		logger.Println("Waiting for metadata...")
+		md, err := watchMetadata(ctx)
+		if err != nil {
+			logger.Println("Error grabing metadata:", err)
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
+		if md.ContainerID == "" {
+			logger.Println("No container set, waiting...")
+			continue
+		}
+
+		var args []string
+		if md.ContainerArgs != "" {
+			args, err = shlex.Split(md.CmdArgs)
+			if err != nil {
+				logger.Println("Error parsing arguments:", err)
+				continue
+			}
+		}
+
+		if err := runContainer(ctx, client, md.ContainerID, args); err != nil {
 			logger.Println("Error:", err)
 			time.Sleep(5 * time.Second)
 		}
+
+		if md.StopOnExit {
+			logger.Printf("Finished running %s, shutting down", md.ContainerID)
+			syscall.Sync()
+			if err := syscall.Reboot(syscall.LINUX_REBOOT_CMD_POWER_OFF); err != nil {
+				logger.Println("Error calling shutdown:", err)
+			}
+			select {}
+		}
+
+		logger.Printf("Finished running %s, waiting for next command...", md.ContainerID)
 	}
 
 	return
