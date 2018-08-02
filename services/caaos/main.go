@@ -15,9 +15,16 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"syscall"
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/cio"
+	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/containerd/oci"
+	"github.com/google/shlex"
+	specs "github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/sys/unix"
 )
 
@@ -343,7 +350,97 @@ func mounts() {
 	write("/sys/fs/cgroup/memory/memory.use_hierarchy", "1")
 }
 
-func runService(path string) {
+func runContainer(ctx context.Context, client *containerd.Client, id string, args []string) error {
+	logger.Println("pulling image")
+	img, err := client.Pull(ctx, id, containerd.WithPullUnpack)
+	if err != nil {
+		return err
+	}
+
+	rnd := fmt.Sprintf("%d", time.Now().Unix())
+
+	logger.Println("creating container")
+	opts := []oci.SpecOpts{
+		oci.WithImageConfig(img),
+		oci.WithHostNamespace(specs.NetworkNamespace),
+		oci.WithHostHostsFile,
+		oci.WithHostResolvconf,
+		//oci.WithTTY,
+		//oci.WithPrivileged,
+		//oci.WithRootFSPath("/cntr"),
+	}
+	if len(args) > 0 {
+		opts = append(opts, oci.WithProcessArgs(args...))
+	}
+	spec := containerd.WithNewSpec(opts...)
+
+	container, err := client.NewContainer(
+		ctx,
+		rnd,
+		//containerd.WithImage(img),
+		containerd.WithNewSnapshot(rnd, img),
+		spec,
+	)
+	if err != nil {
+		return err
+	}
+	defer container.Delete(ctx, containerd.WithSnapshotCleanup)
+
+	// create a new task
+	logger.Println("creating task")
+	task, err := container.NewTask(ctx, cio.Stdio)
+	if err != nil {
+		return err
+	}
+
+	// the task is now running and has a pid that can be use to setup networking
+	// or other runtime settings outside of containerd
+	pid := task.Pid()
+
+	fmt.Println(pid)
+
+	// Setup wait channel
+	statusC, err := task.Wait(ctx)
+	if err != nil {
+		return err
+	}
+
+	// start the redis-server process inside the container
+	logger.Println("running task")
+	if err := task.Start(ctx); err != nil {
+		return err
+	}
+
+	// wait for the task to exit and get the exit status
+	logger.Println("waiting...")
+	status := <-statusC
+	code, _, err := status.Result()
+	if err != nil {
+		return err
+	}
+
+	logger.Println("return code:", code)
+
+	logger.Println("deleting task")
+	if _, err := task.Delete(ctx); err != nil {
+		logger.Println(err)
+	}
+
+	// kill the process and get the exit status
+	//if err := task.Kill(ctx, syscall.SIGTERM); err != nil {
+	//	logger.Println(err)
+	//}
+
+	return nil
+}
+
+func main() {
+	logger.Println("Starting caaos...")
+
+	logger.Println("mounting all the things...")
+	mounts()
+
+	logger.Println("starting containerd")
 	cmd := exec.Command("/bin/containerd")
 	cmd.Env = []string{"PATH=/bin"}
 	cmd.Stdout = os.Stdout
@@ -357,58 +454,96 @@ func runService(path string) {
 			logger.Fatalln(err)
 		}
 	}()
-}
 
-func main() {
-	logger.Println("Starting caaos...")
+	logger.Println("creating client")
+	client, err := containerd.New("/run/containerd/containerd.sock")
+	if err != nil {
+		logger.Fatalln(err)
+	}
+	defer client.Close()
 
-	logger.Println("Mounting all the things...")
-	mounts()
+	ctx := namespaces.WithNamespace(context.Background(), "caaos")
 
-	logger.Println("Starting services...")
+	for {
+		logger.Println("Waiting for metadata...")
+		md, err := watchMetadata(ctx)
+		if err != nil {
+			logger.Println("Error grabing metadata:", err)
+			time.Sleep(1 * time.Second)
+			continue
+		}
 
-	select {}
+		if md.ContainerID == "" {
+			logger.Println("No container set, waiting...")
+			continue
+		}
 
-	/*
-		for {
-			md, err := watchMetadata(ctx)
-			if err != nil {
-				logger.Println("Error grabing metadata:", err)
-				time.Sleep(1 * time.Second)
-				continue
-			}
-
-			if md.CmdURL == "" {
-				logger.Println("Waiting for command...")
-				continue
-			}
-
-			args, err := shlex.Split(md.CmdArgs)
+		var args []string
+		if md.ContainerArgs != "" {
+			args, err = shlex.Split(md.CmdArgs)
 			if err != nil {
 				logger.Println("Error parsing arguments:", err)
 				continue
 			}
-
-			cmd, err := downloadCmd(ctx, md.CmdURL)
-			if err != nil {
-				logger.Println("Error downloading command:", err)
-				continue
-			}
-
-			if err := runCmd(ctx, cmd, args); err != nil {
-				logger.Println("Error running command:", err)
-				continue
-			}
-			if md.StopOnExit {
-				logger.Printf("Finished running %s, shutting down", cmd)
-				syscall.Sync()
-				if err := syscall.Reboot(syscall.LINUX_REBOOT_CMD_POWER_OFF); err != nil {
-					logger.Println("Error calling shutdown:", err)
-				}
-				time.Sleep(5 * time.Second)
-				return
-			}
-			logger.Printf("Finished running %s, waiting for next command...\n", cmd)
 		}
-	*/
+
+		if err := runContainer(ctx, client, md.ContainerID, args); err != nil {
+			logger.Println("Error:", err)
+			time.Sleep(5 * time.Second)
+		}
+
+		if md.StopOnExit {
+			logger.Printf("Finished running %s, shutting down", md.ContainerID)
+			syscall.Sync()
+			if err := syscall.Reboot(syscall.LINUX_REBOOT_CMD_POWER_OFF); err != nil {
+				logger.Println("Error calling shutdown:", err)
+			}
+			select {}
+		}
+
+		logger.Printf("Finished running %s, waiting for next command...", md.ContainerID)
+	}
+
+	return
+
+	for {
+		md, err := watchMetadata(ctx)
+		if err != nil {
+			logger.Println("Error grabing metadata:", err)
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
+		if md.CmdURL == "" {
+			logger.Println("Waiting for command...")
+			continue
+		}
+
+		args, err := shlex.Split(md.CmdArgs)
+		if err != nil {
+			logger.Println("Error parsing arguments:", err)
+			continue
+		}
+
+		cmd, err := downloadCmd(ctx, md.CmdURL)
+		if err != nil {
+			logger.Println("Error downloading command:", err)
+			continue
+		}
+
+		if err := runCmd(ctx, cmd, args); err != nil {
+			logger.Println("Error running command:", err)
+			continue
+		}
+		if md.StopOnExit {
+			logger.Printf("Finished running %s, shutting down", cmd)
+			syscall.Sync()
+			if err := syscall.Reboot(syscall.LINUX_REBOOT_CMD_POWER_OFF); err != nil {
+				logger.Println("Error calling shutdown:", err)
+			}
+			time.Sleep(5 * time.Second)
+			return
+		}
+		logger.Printf("Finished running %s, waiting for next command...\n", cmd)
+	}
 }
