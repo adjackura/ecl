@@ -2,226 +2,23 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"encoding/csv"
-	"encoding/json"
-	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
-	"regexp"
+	"sort"
+	"strings"
+	"sync"
 	"time"
 
-	"cloud.google.com/go/storage"
 	"golang.org/x/sys/unix"
 )
 
-const (
-	metadataURL  = "http://metadata.google.internal/computeMetadata/v1/instance/attributes"
-	metadataHang = "/?recursive=true&alt=json&wait_for_change=true&timeout_sec=120&last_etag="
-	defaultEtag  = "NONE"
-	storageURL   = "storage.googleapis.com"
-
-	bucket = `([a-z0-9][-_.a-z0-9]*)`
-	object = `(.+)`
-)
-
 var (
-	defaultTimeout = 130 * time.Second
-	etag           = defaultEtag
-
-	// Many of the Google Storage URLs are supported below.
-	// It is preferred that customers specify their object using
-	// its gs://<bucket>/<object> URL.
-	bucketRegex = regexp.MustCompile(fmt.Sprintf(`^gs://%s/?$`, bucket))
-	gsRegex     = regexp.MustCompile(fmt.Sprintf(`^gs://%s/%s$`, bucket, object))
-	// Check for the Google Storage URLs:
-	// http://<bucket>.storage.googleapis.com/<object>
-	// https://<bucket>.storage.googleapis.com/<object>
-	gsHTTPRegex1 = regexp.MustCompile(fmt.Sprintf(`^http[s]?://%s\.storage\.googleapis\.com/%s$`, bucket, object))
-	// http://storage.cloud.google.com/<bucket>/<object>
-	// https://storage.cloud.google.com/<bucket>/<object>
-	gsHTTPRegex2 = regexp.MustCompile(fmt.Sprintf(`^http[s]?://storage\.cloud\.google\.com/%s/%s$`, bucket, object))
-	// Check for the other possible Google Storage URLs:
-	// http://storage.googleapis.com/<bucket>/<object>
-	// https://storage.googleapis.com/<bucket>/<object>
-	//
-	// The following are deprecated but checked:
-	// http://commondatastorage.googleapis.com/<bucket>/<object>
-	// https://commondatastorage.googleapis.com/<bucket>/<object>
-	gsHTTPRegex3 = regexp.MustCompile(fmt.Sprintf(`^http[s]?://(?:commondata)?storage\.googleapis\.com/%s/%s$`, bucket, object))
-
-	logger = log.New(os.Stdout, "[caaos init]: ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
+	logger = log.New(os.Stdout, "[init]: ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
 )
-
-type attributesJSON struct {
-	CmdURL        string `json:"cmd-url"`
-	CmdArgs       string `json:"cmd-args"`
-	ContainerID   string `json:"container-id"`
-	ContainerArgs string `json:"container-args"`
-	StopOnExit    bool   `json:"stop-on-exit,string"`
-}
-
-func downloadGSURL(ctx context.Context, bucket, object string, file *os.File) error {
-	client, err := storage.NewClient(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create client: %v", err)
-	}
-	defer client.Close()
-
-	bkt := client.Bucket(bucket)
-	obj := bkt.Object(object)
-	r, err := obj.NewReader(ctx)
-	if err != nil {
-		return fmt.Errorf("error reading object %q: %v", object, err)
-	}
-	defer r.Close()
-
-	_, err = io.Copy(file, r)
-	return err
-}
-
-func downloadCmd(ctx context.Context, url string) (string, error) {
-	out := filepath.Join("/usr", path.Base(url))
-	file, err := os.OpenFile(out, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-
-	bucket, object := findMatch(url)
-	if bucket != "" && object != "" {
-		// Retry up to 3 times, only wait 1 second between retries.
-		for i := 1; ; i++ {
-			logger.Printf("Downloading from GCS, bucket: %q, object: %q", bucket, object)
-			err = downloadGSURL(ctx, bucket, object, file)
-			if err == nil {
-				return out, nil
-			}
-			if err != nil && i > 3 {
-				logger.Println("Failed to download GCS path:", err)
-				break
-			}
-			logger.Print("Failed to download GCS path, retrying...")
-			time.Sleep(1 * time.Second)
-		}
-		logger.Print("Trying unauthenticated download")
-		return out, downloadURL(fmt.Sprintf("https://%s/%s/%s", storageURL, bucket, object), file)
-	}
-
-	// Fall back to an HTTP GET of the URL.
-	return out, downloadURL(url, file)
-}
-
-func downloadURL(url string, file *os.File) error {
-	logger.Printf("Downloading from URL: %q", url)
-	// Retry up to 3 times, only wait 1 second between retries.
-	var res *http.Response
-	var err error
-	for i := 1; ; i++ {
-		res, err = http.Get(url)
-		if err != nil && i > 3 {
-			return err
-		}
-		if err == nil {
-			break
-		}
-		logger.Print("Failed to download URL, retrying...")
-		time.Sleep(1 * time.Second)
-	}
-
-	defer res.Body.Close()
-	_, err = io.Copy(file, res.Body)
-	return err
-}
-
-func findMatch(path string) (string, string) {
-	for _, re := range []*regexp.Regexp{gsRegex, gsHTTPRegex1, gsHTTPRegex2, gsHTTPRegex3} {
-		match := re.FindStringSubmatch(path)
-		if len(match) == 3 {
-			return match[1], match[2]
-		}
-	}
-	return "", ""
-}
-
-func runCmd(ctx context.Context, path string, args []string) error {
-	logger.Printf("Running %q with args %q", path, args)
-
-	c := exec.Command(path, args...)
-
-	pr, pw, err := os.Pipe()
-	if err != nil {
-		return err
-	}
-	defer pr.Close()
-
-	c.Stdout = pw
-	c.Stderr = pw
-
-	if err := c.Start(); err != nil {
-		return err
-	}
-	pw.Close()
-
-	in := bufio.NewScanner(pr)
-	for in.Scan() {
-		logger.Printf("%s: %s", filepath.Base(path), in.Text())
-	}
-
-	return c.Wait()
-}
-
-func updateEtag(resp *http.Response) bool {
-	oldEtag := etag
-	etag = resp.Header.Get("etag")
-	if etag == "" {
-		etag = defaultEtag
-	}
-	return etag == oldEtag
-}
-
-func watchMetadata(ctx context.Context) (*attributesJSON, error) {
-	client := &http.Client{
-		Timeout: defaultTimeout,
-	}
-
-	req, err := http.NewRequest("GET", metadataURL+metadataHang+etag, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Metadata-Flavor", "Google")
-	req = req.WithContext(ctx)
-
-	for {
-		resp, err := client.Do(req)
-		// Don't return error on a canceled context.
-		if err != nil && ctx.Err() != nil {
-			return nil, nil
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		// Only return metadata on updated etag.
-		if updateEtag(resp) {
-			continue
-		}
-
-		md, err := ioutil.ReadAll(resp.Body)
-		resp.Body.Close()
-		if err != nil {
-			return nil, err
-		}
-		var attr attributesJSON
-		return &attr, json.Unmarshal(md, &attr)
-	}
-}
 
 const (
 	nodev    = unix.MS_NODEV
@@ -343,72 +140,97 @@ func mounts() {
 	write("/sys/fs/cgroup/memory/memory.use_hierarchy", "1")
 }
 
-func runService(path string) {
-	cmd := exec.Command("/bin/containerd")
+type systemService struct {
+	name, desc, path string
+	args             []string
+	running          bool
+	mx               sync.RWMutex
+}
+
+func (s *systemService) isRunning() bool {
+	s.mx.RLock()
+	defer s.mx.RUnlock()
+	return s.running
+}
+
+func (s *systemService) start() error {
+	cmd := exec.Command(s.path, s.args...)
 	cmd.Env = []string{"PATH=/bin"}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
 	if err := cmd.Start(); err != nil {
 		logger.Fatalln(err)
 	}
 
 	go func() {
 		if err := cmd.Wait(); err != nil {
-			logger.Fatalln(err)
+			logger.Println(err)
 		}
+		time.Sleep(1 * time.Second)
+		s.start()
 	}()
+	return nil
 }
 
-func main() {
-	logger.Println("Starting caaos...")
+var systemServices = map[string]*systemService{}
 
-	logger.Println("Mounting all the things...")
+func main() {
+	logger.Println("Starting ecl...")
+
+	logger.Println("Mounting all the things")
 	mounts()
 
-	logger.Println("Starting services...")
+	logger.Println("Reading service files")
+	svcFileDir := "/etc/init"
+	svcFiles, err := ioutil.ReadDir(svcFileDir)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	for _, svcFile := range svcFiles {
+		if svcFile.IsDir() {
+			continue
+		}
+		file := filepath.Join(svcFileDir, svcFile.Name())
+		f, err := os.Open(file)
+		if err != nil {
+			logger.Printf("Error opening service file %s: %v", file, err)
+			continue
+		}
+		scanner := bufio.NewScanner(f)
+		var svc systemService
+		for scanner.Scan() {
+			entry := strings.SplitN(scanner.Text(), "=", 2)
+			if len(entry) != 2 {
+				continue
+			}
+			switch entry[0] {
+			case "NAME":
+				svc.name = strings.Trim(entry[1], `"`)
+			case "DESCRIPTION":
+				svc.desc = strings.Trim(entry[1], `"`)
+			case "PATH":
+				svc.path = strings.Trim(entry[1], `"`)
+			case "ARGS":
+				svc.args = strings.Split(strings.Replace(entry[1], " ", "", -1), ",")
+			}
+		}
+
+		systemServices[svcFile.Name()] = &svc
+	}
+
+	var keys []string
+	for k := range systemServices {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	logger.Println("Starting services")
+	for _, k := range keys {
+		logger.Println("Starting", systemServices[k].name)
+		systemServices[k].start()
+	}
 
 	select {}
-
-	/*
-		for {
-			md, err := watchMetadata(ctx)
-			if err != nil {
-				logger.Println("Error grabing metadata:", err)
-				time.Sleep(1 * time.Second)
-				continue
-			}
-
-			if md.CmdURL == "" {
-				logger.Println("Waiting for command...")
-				continue
-			}
-
-			args, err := shlex.Split(md.CmdArgs)
-			if err != nil {
-				logger.Println("Error parsing arguments:", err)
-				continue
-			}
-
-			cmd, err := downloadCmd(ctx, md.CmdURL)
-			if err != nil {
-				logger.Println("Error downloading command:", err)
-				continue
-			}
-
-			if err := runCmd(ctx, cmd, args); err != nil {
-				logger.Println("Error running command:", err)
-				continue
-			}
-			if md.StopOnExit {
-				logger.Printf("Finished running %s, shutting down", cmd)
-				syscall.Sync()
-				if err := syscall.Reboot(syscall.LINUX_REBOOT_CMD_POWER_OFF); err != nil {
-					logger.Println("Error calling shutdown:", err)
-				}
-				time.Sleep(5 * time.Second)
-				return
-			}
-			logger.Printf("Finished running %s, waiting for next command...\n", cmd)
-		}
-	*/
 }

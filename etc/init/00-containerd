@@ -1,0 +1,2 @@
+NAME=containerd
+PATH=/bin/containerd
