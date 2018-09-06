@@ -7,8 +7,8 @@ git clone https://github.com/adjackura/caaos.git
 git clone https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux
 cp caaos/linux/.config linux/.config
 
-wget https://dl.google.com/go/go1.10.3.linux-amd64.tar.gz
-tar -C /usr/local -xzf go1.10.3.linux-amd64.tar.gz
+wget https://dl.google.com/go/go1.11.linux-amd64.tar.gz
+tar -C /usr/local -xzf go1.11.linux-amd64.tar.gz
 export PATH=$PATH:/usr/local/go/bin
 export GOPATH=$(go env GOPATH)
 
