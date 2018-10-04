@@ -11,7 +11,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -167,7 +166,6 @@ func (s *systemService) start() error {
 		if err := cmd.Wait(); err != nil {
 			logger.Println(err)
 		}
-		time.Sleep(1 * time.Second)
 		s.start()
 	}()
 	return nil

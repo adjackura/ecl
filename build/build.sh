@@ -15,7 +15,7 @@ export GOPATH=$(go env GOPATH)
 # Setup the disk
 parted -s /dev/sdb mklabel gpt mkpart ESP fat32 1MiB 551MiB set 1 esp on mkpart primary ext4 551MiB 100%
 mkfs.vfat -F32 /dev/sdb1
-mkfs.ext4 /dev/sdb2
+mkfs.ext4 -F /dev/sdb2
 e2label /dev/sdb2 root
 
 mkdir /mnt/sdb1
