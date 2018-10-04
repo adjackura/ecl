@@ -7,8 +7,8 @@ git clone https://github.com/adjackura/caaos.git
 git clone https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux
 cp caaos/linux/.config linux/.config
 
-wget https://dl.google.com/go/go1.11.linux-amd64.tar.gz
-tar -C /usr/local -xzf go1.11.linux-amd64.tar.gz
+wget https://dl.google.com/go/go1.11.1.linux-amd64.tar.gz
+tar -C /usr/local -xzf go1.11.1.linux-amd64.tar.gz
 export PATH=$PATH:/usr/local/go/bin
 export GOPATH=$(go env GOPATH)
 
@@ -39,21 +39,21 @@ refind-install --usedefault /dev/sdb1
 cp -r caaos/EFI /mnt/sdb1
 
 # Build init
-go get -d github.com/adjackura/caaos/init
+go get -d -u github.com/adjackura/caaos/init
 CGO_ENABLED=0 go build -ldflags '-s -w' -o /mnt/sdb2/sbin/init github.com/adjackura/caaos/init
 
 # Build caaos
-go get -d github.com/adjackura/caaos/services/caaos
+go get -d -u github.com/adjackura/caaos/services/caaos
 go build -tags 'netgo osusergo' -buildmode pie -ldflags '-s -w -extldflags "-static"' -o /mnt/sdb2/bin/caaos github.com/adjackura/caaos/services/caaos
 
 # Build containerd
-go get -d github.com/containerd/containerd
+go get -d -u github.com/containerd/containerd
 make -C $GOPATH/src/github.com/containerd/containerd EXTRA_FLAGS="-buildmode pie" EXTRA_LDFLAGS='-s -w -extldflags "-fno-PIC -static"' BUILDTAGS="no_cri no_btrfs netgo osusergo static_build"
 cp $GOPATH/src/github.com/containerd/containerd/bin/ctr /mnt/sdb2/bin/ctr
 cp $GOPATH/src/github.com/containerd/containerd/bin/containerd /mnt/sdb2/bin/containerd
 cp $GOPATH/src/github.com/containerd/containerd/bin/containerd-shim /mnt/sdb2/bin/containerd-shim
 
 # Build runc
-go get -d github.com/opencontainers/runc
+go get -d -u github.com/opencontainers/runc
 make -C $GOPATH/src/github.com/opencontainers/runc static
 cp $GOPATH/src/github.com/opencontainers/runc/runc /mnt/sdb2/bin/runc
