@@ -1,0 +1,139 @@
+{
+	"ociVersion": "1.0.1-dev",
+	"root": {
+		"path": "rootfs"
+	},
+	"mounts": [
+		{
+			"destination": "/proc",
+			"type": "proc",
+			"source": "proc"
+		},
+		{
+			"destination": "/dev",
+			"type": "tmpfs",
+			"source": "tmpfs",
+			"options": [
+				"nosuid",
+				"strictatime",
+				"mode=755",
+				"size=65536k"
+			]
+		},
+		{
+			"destination": "/dev/pts",
+			"type": "devpts",
+			"source": "devpts",
+			"options": [
+				"nosuid",
+				"noexec",
+				"newinstance",
+				"ptmxmode=0666",
+				"mode=0620",
+				"gid=5"
+			]
+		},
+		{
+			"destination": "/dev/shm",
+			"type": "tmpfs",
+			"source": "shm",
+			"options": [
+				"nosuid",
+				"noexec",
+				"nodev",
+				"mode=1777",
+				"size=65536k"
+			]
+		},
+		{
+			"destination": "/dev/mqueue",
+			"type": "mqueue",
+			"source": "mqueue",
+			"options": [
+				"nosuid",
+				"noexec",
+				"nodev"
+			]
+		},
+		{
+			"destination": "/sys",
+			"type": "sysfs",
+			"source": "sysfs",
+			"options": [
+				"nosuid",
+				"noexec",
+				"nodev",
+				"ro"
+			]
+		},
+		{
+			"destination": "/sys/fs/cgroup",
+			"type": "cgroup",
+			"source": "cgroup",
+			"options": [
+				"nosuid",
+				"noexec",
+				"nodev",
+				"relatime",
+				"ro"
+			]
+		}
+	],
+	"process": {
+		"terminal": true,
+		"user": {
+			"uid": 0,
+			"gid": 0
+		},
+		"args": [
+			"/bin/containerd"
+		],
+		"cwd": "/",
+		"capabilities": {
+			"bounding": [
+				"CAP_AUDIT_WRITE",
+				"CAP_KILL",
+				"CAP_NET_BIND_SERVICE"
+			],
+			"effective": [
+				"CAP_AUDIT_WRITE",
+				"CAP_KILL",
+				"CAP_NET_BIND_SERVICE"
+			],
+			"inheritable": [
+				"CAP_AUDIT_WRITE",
+				"CAP_KILL",
+				"CAP_NET_BIND_SERVICE"
+			],
+			"permitted": [
+				"CAP_AUDIT_WRITE",
+				"CAP_KILL",
+				"CAP_NET_BIND_SERVICE"
+			],
+			"ambient": [
+				"CAP_AUDIT_WRITE",
+				"CAP_KILL",
+				"CAP_NET_BIND_SERVICE"
+			]
+		},
+		"rlimits": [],
+		"noNewPrivileges": true
+	},
+	"platform": {
+        "os": "linux",
+        "arch": "amd64"
+    },
+	"linux": {
+		"namespaces": [
+			{
+				"type": "pid"
+			},
+			{
+				"type": "ipc"
+			},
+			{
+				"type": "mount"
+			}
+		]
+	}
+}
