@@ -63,10 +63,12 @@ func main() {
 
 	// Run containerd
 	go func() {
-		if err := run("/bin/containerd"); err != nil {
-			logger.Println(err)
+		for {
+			if err := run("/bin/containerd"); err != nil {
+				logger.Println(err)
+			}
+			time.Sleep(1 * time.Second)
 		}
-		time.Sleep(1 * time.Second)
 	}()
 
 	// Run kublet
