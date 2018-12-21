@@ -86,7 +86,7 @@
 			"gid": 0
 		},
 		"args": [
-			"/bin/containerd"
+			"/sbin/container-init"
 		],
 		"cwd": "/",
 		"capabilities": {
