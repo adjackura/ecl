@@ -25,7 +25,7 @@ mount /dev/sdb2 /mnt/sdb2
 mkdir /mnt/sdb2/dev
 mkdir /mnt/sdb2/sbin
 mkdir /mnt/sdb2/bin
-cp -r ecl/etc /mnt/sdb2
+#cp -r ecl/etc /mnt/sdb2
 mkdir -p /mnt/sdb2/etc/ssl/certs
 cp /etc/ssl/certs/ca-certificates.crt /mnt/sdb2/etc/ssl/certs/ca-certificates.crt
 

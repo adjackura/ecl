@@ -12,8 +12,16 @@ import (
 )
 
 var (
-	logger = log.New(os.Stdout, "[init]: ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
+	logger *log.Logger
 )
+
+func init() {
+	kmsg, err := os.Open("/dev/kmsg")
+	if err != nil {
+		kmsg = os.Stdout
+	}
+	logger = log.New(kmsg, "[init]: ", 0)
+}
 
 const (
 	nodev    = unix.MS_NODEV
