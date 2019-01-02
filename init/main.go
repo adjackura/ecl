@@ -1,16 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"encoding/csv"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
-	"strings"
-	"sync"
 
 	"golang.org/x/sys/unix"
 )
@@ -139,39 +135,23 @@ func mounts() {
 	write("/sys/fs/cgroup/memory/memory.use_hierarchy", "1")
 }
 
-type systemService struct {
-	name, desc, path string
-	args             []string
-	running          bool
-	mx               sync.RWMutex
-}
-
-func (s *systemService) isRunning() bool {
-	s.mx.RLock()
-	defer s.mx.RUnlock()
-	return s.running
-}
-
-func (s *systemService) start() error {
-	cmd := exec.Command(s.path, s.args...)
-	cmd.Env = []string{"PATH=/bin"}
+func start(path string, args ...string) error {
+	cmd := exec.Command(path, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 	if err := cmd.Start(); err != nil {
-		logger.Fatalln(err)
+		return err
 	}
 
 	go func() {
 		if err := cmd.Wait(); err != nil {
 			logger.Println(err)
 		}
-		s.start()
+		start(path, args...)
 	}()
 	return nil
 }
-
-var systemServices = map[string]*systemService{}
 
 func main() {
 	logger.Println("Starting ecl...")
@@ -179,55 +159,9 @@ func main() {
 	logger.Println("Mounting all the things")
 	mounts()
 
-	logger.Println("Reading service files")
-	svcFileDir := "/etc/init"
-	svcFiles, err := ioutil.ReadDir(svcFileDir)
-	if err != nil {
-		logger.Fatal(err)
-	}
-
-	for _, svcFile := range svcFiles {
-		if svcFile.IsDir() {
-			continue
-		}
-		file := filepath.Join(svcFileDir, svcFile.Name())
-		f, err := os.Open(file)
-		if err != nil {
-			logger.Printf("Error opening service file %s: %v", file, err)
-			continue
-		}
-		scanner := bufio.NewScanner(f)
-		var svc systemService
-		for scanner.Scan() {
-			entry := strings.SplitN(scanner.Text(), "=", 2)
-			if len(entry) != 2 {
-				continue
-			}
-			switch entry[0] {
-			case "NAME":
-				svc.name = strings.Trim(entry[1], `"`)
-			case "DESCRIPTION":
-				svc.desc = strings.Trim(entry[1], `"`)
-			case "PATH":
-				svc.path = strings.Trim(entry[1], `"`)
-			case "ARGS":
-				svc.args = strings.Split(strings.Replace(entry[1], " ", "", -1), ",")
-			}
-		}
-
-		systemServices[svcFile.Name()] = &svc
-	}
-
-	var keys []string
-	for k := range systemServices {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	logger.Println("Starting services")
-	for _, k := range keys {
-		logger.Println("Starting", systemServices[k].name)
-		systemServices[k].start()
+	logger.Println("Starting container...")
+	if err := start("/bin/runc", "-b", "/container/"); err != nil {
+		logger.Fatalln(err)
 	}
 
 	select {}
