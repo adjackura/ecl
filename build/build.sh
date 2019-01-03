@@ -7,12 +7,6 @@ DEBIAN_FRONTEND=noninteractive apt-get -y install build-essential git-core bison
 echo "ECL build status: cloning ecl"
 git clone https://github.com/adjackura/ecl.git -b kubernetes
 
-echo "ECL build status: installing Go"
-wget --quiet https://dl.google.com/go/go1.11.4.linux-amd64.tar.gz
-tar -C /usr/local -xzf go1.11.4.linux-amd64.tar.gz
-export PATH=$PATH:/usr/local/go/bin
-export GOPATH=$(go env GOPATH)
-
 echo "ECL build status: setting up the disk"
 parted -s /dev/sdb \
   mklabel gpt \
@@ -34,17 +28,12 @@ mkdir /mnt/sdb2/bin
 mkdir -p /mnt/sdb2/etc/ssl/certs
 cp /etc/ssl/certs/ca-certificates.crt /mnt/sdb2/etc/ssl/certs/ca-certificates.crt
 
-echo "ECL build status: cloning linux"
-git clone https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux
-cp ecl/linux/.config linux/.config
-
 echo "ECL build status: building the kernel"
-pushd linux
-git checkout v4.20
-# make olddefconfig
-make -j 4
-cp arch/x86_64/boot/bzImage /mnt/sdb2/
-popd
+wget --quiet https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.20.tar.xz
+tar xf linux-4.20.tar.xz
+cp ecl/linux/.config linux-4.20/.config
+make -C linux-4.20 -j $(nproc)
+cp linux-4.20/arch/x86_64/boot/bzImage /mnt/sdb2/
 
 echo "ECL build status: setting up boot"
 refind-install --usedefault /dev/sdb1
@@ -60,15 +49,22 @@ mkdir /mnt/sdb2/container/rootfs/var
 mkdir /mnt/sdb2/container/rootfs/dev/pts
 mkdir /mnt/sdb2/container/rootfs/dev/shm
 
+echo "ECL build status: installing Go"
+wget --quiet https://dl.google.com/go/go1.11.4.linux-amd64.tar.gz
+tar -C /usr/local -xzf go1.11.4.linux-amd64.tar.gz
+export PATH=$PATH:/usr/local/go/bin
+export GOPATH=~/go
+go version
+
 echo "ECL build status: building init for host"
 pushd ecl/init
-go get ...
+go get -d -v ./...
 CGO_ENABLED=0 go build -ldflags '-s -w' -o /mnt/sdb2/sbin/init
 popd
 
 echo "ECL build status: building init for container"
 pushd ecl/container-init
-go get -d -u ...
+go get -d -v ./...
 CGO_ENABLED=0 go build -ldflags '-s -w' -o /mnt/sdb2/container/rootfs/sbin/container-init
 popd
 
@@ -94,7 +90,7 @@ cp $GOPATH/src/k8s.io/kubernetes/_output/bin/kube* /mnt/sdb2/container/rootfs/bi
 
 echo "ECL build status: pulling crictl for container"
 VERSION="v1.13.0"
-wget https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-$VERSION-linux-amd64.tar.gz
+wget --quiet https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-$VERSION-linux-amd64.tar.gz
 sudo tar zxvf crictl-$VERSION-linux-amd64.tar.gz -C /mnt/sdb2/container/rootfs/bin/
 
 echo "ECL build status: pulling cni plugins for container"
@@ -102,5 +98,4 @@ CNI_VERSION="v0.7.4"
 mkdir -p /mnt/sdb2/container/rootfs/opt/cni/bin
 curl -L "https://github.com/containernetworking/plugins/releases/download/${CNI_VERSION}/cni-plugins-amd64-${CNI_VERSION}.tgz" | tar -C /mnt/sdb2/container/rootfs/opt/cni/bin -xz
 
-sleep 10
 echo "ECL build finished"

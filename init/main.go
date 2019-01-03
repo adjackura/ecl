@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -16,8 +17,10 @@ var (
 )
 
 func init() {
-	kmsg, err := os.Open("/dev/kmsg")
+	fmt.Println("open /dev/kmsg")
+	kmsg, err := os.OpenFile("/dev/kmsg", os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
+		fmt.Println("error, falling back to stdout:", err)
 		kmsg = os.Stdout
 	}
 	logger = log.New(kmsg, "[init]: ", 0)
@@ -168,7 +171,7 @@ func main() {
 	mounts()
 
 	logger.Println("Starting container...")
-	if err := start("/bin/runc", "-b", "/container/", "container"); err != nil {
+	if err := start("/bin/runc", "-b", "/container", "run", "container"); err != nil {
 		logger.Fatalln(err)
 	}
 
