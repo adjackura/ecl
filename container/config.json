@@ -80,7 +80,7 @@
 		}
 	],
 	"process": {
-		"terminal": true,
+		"terminal": false,
 		"user": {
 			"uid": 0,
 			"gid": 0
