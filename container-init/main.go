@@ -24,6 +24,7 @@ type systemService struct {
 }
 
 func run(path string, args ...string) error {
+	logger.Printf("Running command %q with args %q", path, args)
 	cmd := exec.Command(path, args...)
 	cmd.Env = []string{"PATH=/bin"}
 	cmd.Stdout = os.Stdout
@@ -44,7 +45,7 @@ type attributesJSON struct {
 func getMetadata() (*attributesJSON, error) {
 	client := &http.Client{}
 
-	req, err := http.NewRequest("GET", "http://metadata.google.internal/computeMetadata/v1/instance/attributes?alt=json", nil)
+	req, err := http.NewRequest("GET", "http://metadata.google.internal/computeMetadata/v1/instance/attributes?recursive=true&alt=json", nil)
 	if err != nil {
 		return nil, err
 	}
