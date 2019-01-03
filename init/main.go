@@ -168,7 +168,7 @@ func main() {
 	mounts()
 
 	logger.Println("Starting container...")
-	if err := start("/bin/runc", "-b", "/container/"); err != nil {
+	if err := start("/bin/runc", "-b", "/container/", "container"); err != nil {
 		logger.Fatalln(err)
 	}
 

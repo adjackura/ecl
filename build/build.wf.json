@@ -1,0 +1,76 @@
+
+{
+    "Name": "ecl-build",
+    "Vars": {
+      "build_date": "${TIMESTAMP}",
+      "publish_project": "${PROJECT}"
+    },
+    "Sources": {
+      "build.sh": "./build.sh"
+    },
+    "Steps": {
+      "setup-disks": {
+        "CreateDisks": [
+          {
+            "Name": "disk-build",
+            "SourceImage": "projects/debian-cloud/global/images/family/debian-9",
+            "SizeGb": "200",
+            "Type": "pd-ssd"
+          },
+          {
+            "Name": "disk-install",
+            "SizeGb": "10",
+            "Type": "pd-ssd"
+          }
+        ]
+      },
+      "run-build": {
+        "CreateInstances": [
+          {
+            "Name": "inst-build",
+            "Disks": [{"Source": "disk-build"}, {"Source": "disk-install"}],
+            "MachineType": "n1-standard-4",
+            "StartupScript": "build.sh"
+          }
+        ]
+      },
+      "wait-for-build": {
+        "Timeout": "20m",
+        "WaitForInstancesSignal": [
+          {"Name": "inst-build",
+            "SerialOutput": {
+              "Port": 1,
+              "StatusMatch": "ECL build status:",
+              "FailureMatch": "ECL build failed:",
+              "SuccessMatch": "ECL build finished"
+            }
+          }
+        ]
+      },
+      "del-build": {
+        "DeleteResources": {
+          "Instances": ["inst-build"]
+        }
+      },
+      "create-image": {
+        "CreateImages": [
+          {
+            "Name": "ecl-kubernetes-v${build_date}",
+            "SourceDisk": "disk-install",
+            "GuestOsFeatures": ["VIRTIO_SCSI_MULTIQUEUE", "UEFI_COMPATIBLE"],
+            "Family": "ecl-kubernetes",
+            "Project": "${publish_project}",
+            "NoCleanup": true,
+            "ExactName": true
+          }
+        ]
+      }
+    },
+    "Dependencies": {
+      "run-build": ["setup-disks"],
+      "wait-for-build": ["run-build"],
+      "del-build": ["wait-for-build"],
+      "create-image": ["del-build"]
+    }
+  }
+  
