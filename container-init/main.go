@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -26,12 +28,60 @@ func run(path string, args ...string) error {
 	cmd.Env = []string{"PATH=/bin"}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
 	if err := cmd.Start(); err != nil {
 		return err
 	}
 
 	return cmd.Wait()
+}
+
+type attributesJSON struct {
+	Master             string `json:"master"`
+	Token              string `json:"token"`
+	DiscoveryTokenHash string `json:"discovery-token-ca-cert-hash"`
+}
+
+func getMetadata() (*attributesJSON, error) {
+	client := &http.Client{}
+
+	req, err := http.NewRequest("GET", "http://metadata.google.internal/computeMetadata/v1/instance/attributes?alt=json", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Metadata-Flavor", "Google")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	md, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+	var metadata attributesJSON
+	return &metadata, json.Unmarshal(md, &metadata)
+}
+
+func runKubeadm() {
+	md, err := getMetadata()
+	if err != nil {
+		logger.Println(err)
+	}
+
+	kubeadmArgs := []string{
+		"join",
+		md.Master,
+		"--token",
+		md.Token,
+		"--discovery-token-ca-cert-hash",
+		md.DiscoveryTokenHash,
+	}
+
+	if err := run("/bin/kubeadm", kubeadmArgs...); err != nil {
+		logger.Println(err)
+	}
 }
 
 func runKublet() {
@@ -73,6 +123,7 @@ func main() {
 
 	// Run kublet
 	go runKublet()
+	runKubeadm()
 
 	select {}
 }
