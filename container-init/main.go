@@ -40,6 +40,7 @@ type attributesJSON struct {
 	Master             string `json:"master"`
 	Token              string `json:"token"`
 	DiscoveryTokenHash string `json:"discovery-token-ca-cert-hash"`
+	Args               string `json:"args"`
 }
 
 func getMetadata() (*attributesJSON, error) {
@@ -78,6 +79,10 @@ func runKubeadm() {
 		md.Token,
 		"--discovery-token-ca-cert-hash",
 		md.DiscoveryTokenHash,
+	}
+
+	if md.Args != "" {
+		kubeadmArgs = append(kubeadmArgs, strings.Split(md.Args, ";")...)
 	}
 
 	if err := run("/bin/kubeadm", kubeadmArgs...); err != nil {

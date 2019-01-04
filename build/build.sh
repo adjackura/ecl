@@ -40,6 +40,20 @@ refind-install --usedefault /dev/sdb1
 cp -r ecl/EFI /mnt/sdb1
 
 echo "ECL build status: setting up container"
+apt-get install -y \
+     apt-transport-https \
+     ca-certificates \
+     curl \
+     gnupg2 \
+     software-properties-common
+curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add -
+add-apt-repository \
+   "deb [arch=amd64] https://download.docker.com/linux/debian \
+   $(lsb_release -cs) \
+   stable"
+apt-get update
+apt-get install docker-ce
+
 cp -r ecl/container /mnt/sdb2
 mkdir /mnt/sdb2/container/rootfs/bin
 mkdir /mnt/sdb2/container/rootfs/sbin
@@ -48,6 +62,7 @@ mkdir /mnt/sdb2/container/rootfs/sys
 mkdir /mnt/sdb2/container/rootfs/var
 mkdir /mnt/sdb2/container/rootfs/dev/pts
 mkdir /mnt/sdb2/container/rootfs/dev/shm
+docker export $(docker create debian) | tar -C /mnt/sdb2/container/rootfs -xf -
 
 echo "ECL build status: installing Go"
 wget --quiet https://dl.google.com/go/go1.11.4.linux-amd64.tar.gz
