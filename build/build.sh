@@ -52,17 +52,17 @@ add-apt-repository \
    $(lsb_release -cs) \
    stable"
 apt-get update
-apt-get install docker-ce
+apt-get install -y docker-ce
 
+mkdir -p /mnt/sdb2/container/rootfs/bin
+mkdir -p /mnt/sdb2/container/rootfs/sbin
+mkdir -p /mnt/sdb2/container/rootfs/proc
+mkdir -p /mnt/sdb2/container/rootfs/sys
+mkdir -p /mnt/sdb2/container/rootfs/var
+mkdir -p /mnt/sdb2/container/rootfs/dev/pts
+mkdir -p /mnt/sdb2/container/rootfs/dev/shm
+docker export $(docker create ubuntu) | tar -C /mnt/sdb2/container/rootfs -xf -
 cp -r ecl/container /mnt/sdb2
-mkdir /mnt/sdb2/container/rootfs/bin
-mkdir /mnt/sdb2/container/rootfs/sbin
-mkdir /mnt/sdb2/container/rootfs/proc
-mkdir /mnt/sdb2/container/rootfs/sys
-mkdir /mnt/sdb2/container/rootfs/var
-mkdir /mnt/sdb2/container/rootfs/dev/pts
-mkdir /mnt/sdb2/container/rootfs/dev/shm
-docker export $(docker create debian) | tar -C /mnt/sdb2/container/rootfs -xf -
 
 echo "ECL build status: installing Go"
 wget --quiet https://dl.google.com/go/go1.11.4.linux-amd64.tar.gz

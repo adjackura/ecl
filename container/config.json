@@ -88,6 +88,9 @@
 		"args": [
 			"/sbin/container-init"
 		],
+		"env": [
+			"PATH=/usr/sbin:/usr/bin:/sbin:/bin"
+	    ],
 		"cwd": "/",
 		"capabilities": {
 			"bounding": [
