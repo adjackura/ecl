@@ -117,6 +117,11 @@ func runKublet() {
 func main() {
 	logger.Println("Starting container init...")
 
+	logger.Println("Enable ip forwarding")
+	if err := ioutil.WriteFile("/proc/sys/net/ipv4/ip_forward", []byte("1"), 0644); err != nil {
+		logger.Println(err)
+	}
+
 	// Run containerd
 	go func() {
 		for {
