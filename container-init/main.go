@@ -98,7 +98,7 @@ func runKublet() {
 			"--config=/var/lib/kubelet/config.yaml",
 			"--cloud-provider=gce",
 			"--container-runtime=remote",
-			"--container-runtime-endpoint=unix:///var/run/containerd/containerd.sock",
+			"--container-runtime-endpoint=unix:///run/containerd/containerd.sock",
 		}
 
 		d, err := ioutil.ReadFile("/var/lib/kubelet/kubeadm-flags.env")
