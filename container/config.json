@@ -115,7 +115,8 @@
 				"CAP_SETFCAP",
 				"CAP_SETPCAP",
 				"CAP_SYS_CHROOT",
-				"CAP_NET_ADMIN"
+				"CAP_NET_ADMIN",
+				"CAP_SYS_ADMIN"
 			],
 			"effective": [
 				"CAP_AUDIT_WRITE",
@@ -132,7 +133,8 @@
 				"CAP_SETFCAP",
 				"CAP_SETPCAP",
 				"CAP_SYS_CHROOT",
-				"CAP_NET_ADMIN"
+				"CAP_NET_ADMIN",
+				"CAP_SYS_ADMIN"
 			],
 			"inheritable": [
 				"CAP_AUDIT_WRITE",
@@ -149,7 +151,8 @@
 				"CAP_SETFCAP",
 				"CAP_SETPCAP",
 				"CAP_SYS_CHROOT",
-				"CAP_NET_ADMIN"
+				"CAP_NET_ADMIN",
+				"CAP_SYS_ADMIN"
 			],
 			"permitted": [
 				"CAP_AUDIT_WRITE",
@@ -166,7 +169,8 @@
 				"CAP_SETFCAP",
 				"CAP_SETPCAP",
 				"CAP_SYS_CHROOT",
-				"CAP_NET_ADMIN"
+				"CAP_NET_ADMIN",
+				"CAP_SYS_ADMIN"
 			],
 			"ambient": [
 				"CAP_AUDIT_WRITE",
@@ -183,7 +187,8 @@
 				"CAP_SETFCAP",
 				"CAP_SETPCAP",
 				"CAP_SYS_CHROOT",
-				"CAP_NET_ADMIN"
+				"CAP_NET_ADMIN",
+				"CAP_SYS_ADMIN"
 			]
 		},
 		"rlimits": [],
