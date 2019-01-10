@@ -57,7 +57,7 @@
           {
             "Name": "ecl-kubernetes-v${build_date}",
             "SourceDisk": "disk-install",
-            "GuestOsFeatures": ["VIRTIO_SCSI_MULTIQUEUE", "UEFI_COMPATIBLE"],
+            "GuestOsFeatures": ["VIRTIO_SCSI_MULTIQUEUE", "UEFI_COMPATIBLE", "MULTI_IP_SUBNET"],
             "Family": "ecl-kubernetes",
             "Project": "${publish_project}",
             "NoCleanup": true,

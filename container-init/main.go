@@ -96,6 +96,9 @@ func runKublet() {
 			"--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf",
 			"--kubeconfig=/etc/kubernetes/kubelet.conf",
 			"--config=/var/lib/kubelet/config.yaml",
+			"--cgroup-driver=cgroupfs",
+			// This is a bug workaround: https://github.com/kubernetes/kubernetes/blob/05183bffe5cf690b418718aa107f5655e4ac0618/pkg/kubelet/cm/container_manager_linux.go#L209
+			"--fail-swap-on=false",
 		}
 
 		d, err := ioutil.ReadFile("/var/lib/kubelet/kubeadm-flags.env")

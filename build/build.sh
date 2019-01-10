@@ -98,6 +98,9 @@ cp $GOPATH/src/github.com/containerd/containerd/bin/containerd-shim /mnt/sdb2/co
 
 echo "ECL build status: building Kubernetes for container"
 go get -d k8s.io/kubernetes
+pushd $GOPATH/src/k8s.io/kubernetes
+git checkout release-1.13
+popd
 make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubeadm
 make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubectl
 make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubelet GOLDFLAGS='-w -extldflags "-static"' GOFLAGS='-tags=osusergo'
