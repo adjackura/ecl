@@ -96,9 +96,10 @@ func runKublet() {
 			"--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf",
 			"--kubeconfig=/etc/kubernetes/kubelet.conf",
 			"--config=/var/lib/kubelet/config.yaml",
-			"--cloud-provider=gce",
 			"--container-runtime=remote",
 			"--container-runtime-endpoint=unix:///run/containerd/containerd.sock",
+			"--fail-swap-on=false",
+			"-v 3",
 		}
 
 		d, err := ioutil.ReadFile("/var/lib/kubelet/kubeadm-flags.env")
