@@ -14,3 +14,11 @@ differ = "io.containerd.differ.v1.base-diff"
 
 [metrics]
   address = ""
+
+[plugins]
+  [plugins.cri.containerd]
+    snapshotter = "overlayfs"
+    [plugins.cri.containerd.default_runtime]
+      runtime_type = "io.containerd.runtime.v1.linux"
+      runtime_engine = "/runc"
+      runtime_root = ""
