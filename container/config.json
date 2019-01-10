@@ -93,7 +93,7 @@
 			"gid": 0
 		},
 		"args": [
-			"/sbin/container-init"
+			"/bin/bash"
 		],
 		"env": [
 			"PATH=/usr/sbin:/usr/bin:/sbin:/bin"

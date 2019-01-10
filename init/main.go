@@ -22,7 +22,7 @@ func init() {
 		fmt.Println("Error, falling back to stdout:", err)
 		kmsg = os.Stdout
 	}
-	logger = log.New(kmsg, "[init]: ", 0)
+	logger = log.New(kmsg, "[init]: ", log.Lmicroseconds)
 }
 
 const (
