@@ -96,7 +96,7 @@
 			"/sbin/container-init"
 		],
 		"env": [
-			"PATH=/usr/sbin:/usr/bin:/sbin:/bin"
+			"PATH=/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/bin:/usr/local/sbin:/opt/bin"
 	    ],
 		"cwd": "/",
 		"capabilities": {
@@ -200,6 +200,9 @@
     },
 	"linux": {
 		"namespaces": [
+			{
+				"type": "pid"
+			},
 			{
 				"type": "ipc"
 			},

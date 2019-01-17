@@ -85,7 +85,7 @@ func runKubeadm() {
 		kubeadmArgs = append(kubeadmArgs, strings.Split(md.Args, ";")...)
 	}
 
-	if err := run("/bin/kubeadm", kubeadmArgs...); err != nil {
+	if err := run("/opt/bin/kubeadm", kubeadmArgs...); err != nil {
 		logger.Println(err)
 	}
 }
@@ -97,6 +97,7 @@ func runKublet() {
 			"--kubeconfig=/etc/kubernetes/kubelet.conf",
 			"--config=/var/lib/kubelet/config.yaml",
 			"--container-runtime=remote",
+			"--runtime-request-timeout=15m",
 			"--container-runtime-endpoint=unix:///run/containerd/containerd.sock",
 			"--fail-swap-on=false",
 			"-v=1",
@@ -111,10 +112,10 @@ func runKublet() {
 			kubletArgs = append(kubletArgs, strings.Split(out, " ")...)
 		}
 
-		if err := run("/bin/kubelet", kubletArgs...); err != nil {
+		if err := run("/opt/bin/kubelet", kubletArgs...); err != nil {
 			logger.Println(err)
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 }
 
@@ -129,7 +130,7 @@ func main() {
 	// Run containerd
 	go func() {
 		for {
-			if err := run("/bin/containerd"); err != nil {
+			if err := run("/usr/local/bin/containerd"); err != nil {
 				logger.Println(err)
 			}
 			time.Sleep(1 * time.Second)

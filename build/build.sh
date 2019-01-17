@@ -1,10 +1,33 @@
 #! /bin/bash
 
-set -e 
-
 echo "ECL build status: installing dependencies"
 apt-get update  
-DEBIAN_FRONTEND=noninteractive apt-get -y install build-essential git-core bison flex libelf-dev bc refind libseccomp-dev pkg-config dosfstools
+DEBIAN_FRONTEND=noninteractive apt-get install -y \
+  curl \
+  build-essential \
+  git-core \
+  bison \
+  flex \
+  libelf-dev \
+  bc \
+  refind \
+  libseccomp-dev \
+  pkg-config \
+  dosfstools \
+  apt-transport-https \
+  gnupg2 \
+  software-properties-common\
+  ca-certificates
+curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add -
+add-apt-repository \
+   "deb [arch=amd64] https://download.docker.com/linux/debian \
+   $(lsb_release -cs) \
+   stable"
+apt-get update
+DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce
+
+# Installing docker can return an error, but it still works fine for whatever reason
+set -e 
 
 echo "ECL build status: cloning ecl"
 git clone https://github.com/adjackura/ecl.git -b kubernetes
@@ -35,20 +58,6 @@ refind-install --usedefault /dev/sdb1
 cp -r ecl/EFI /mnt/sdb1
 
 echo "ECL build status: setting up container"
-apt-get install -y \
-     apt-transport-https \
-     ca-certificates \
-     curl \
-     gnupg2 \
-     software-properties-common
-curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add -
-add-apt-repository \
-   "deb [arch=amd64] https://download.docker.com/linux/debian \
-   $(lsb_release -cs) \
-   stable"
-apt-get update
-apt-get install -y docker-ce
-
 mkdir -p /mnt/sdb2/container/rootfs/bin
 mkdir -p /mnt/sdb2/container/rootfs/sbin
 mkdir -p /mnt/sdb2/container/rootfs/proc
@@ -58,7 +67,7 @@ mkdir -p /mnt/sdb2/container/rootfs/dev/pts
 mkdir -p /mnt/sdb2/container/rootfs/dev/shm
 
 docker build -t debian:kubernetes - < ecl/build/Dockerfile
-docker export $(docker create debian:kubernetes) | tar -C /mnt/sdb2/container/rootfs -xf -
+docker export $(docker create ubuntu:kubernetes) | tar -C /mnt/sdb2/container/rootfs -xf -
 cp -r ecl/container /mnt/sdb2
 
 echo "ECL build status: building the kernel"
@@ -87,33 +96,33 @@ go get -d -v ./...
 CGO_ENABLED=0 go build -ldflags '-s -w' -o /mnt/sdb2/container/rootfs/sbin/container-init
 popd
 
-echo "ECL build status: building runc for host and container"
+echo "ECL build status: building runc for host"
 go get -d -u github.com/opencontainers/runc
 make -C $GOPATH/src/github.com/opencontainers/runc static
 cp $GOPATH/src/github.com/opencontainers/runc/runc /mnt/sdb2/bin/
-cp $GOPATH/src/github.com/opencontainers/runc/runc /mnt/sdb2/container/rootfs/bin/
+#cp $GOPATH/src/github.com/opencontainers/runc/runc /mnt/sdb2/container/rootfs/bin/
 
-echo "ECL build status: building containerd for container"
-go get -d -u github.com/containerd/containerd
-make -C $GOPATH/src/github.com/containerd/containerd EXTRA_FLAGS="-buildmode pie" EXTRA_LDFLAGS='-s -w -extldflags "-fno-PIC -static"' BUILDTAGS="no_btrfs netgo osusergo static_build"
-cp $GOPATH/src/github.com/containerd/containerd/bin/ctr /mnt/sdb2/container/rootfs/bin/
-cp $GOPATH/src/github.com/containerd/containerd/bin/containerd /mnt/sdb2/container/rootfs/bin/
-cp $GOPATH/src/github.com/containerd/containerd/bin/containerd-shim /mnt/sdb2/container/rootfs/bin/
+#echo "ECL build status: building containerd for container"
+#go get -d -u github.com/containerd/containerd
+#make -C $GOPATH/src/github.com/containerd/containerd EXTRA_FLAGS="-buildmode pie" EXTRA_LDFLAGS='-s -w -extldflags "-fno-PIC -static"' BUILDTAGS="no_btrfs netgo osusergo static_build"
+#cp $GOPATH/src/github.com/containerd/containerd/bin/ctr /mnt/sdb2/container/rootfs/bin/
+#cp $GOPATH/src/github.com/containerd/containerd/bin/containerd /mnt/sdb2/container/rootfs/bin/
+#cp $GOPATH/src/github.com/containerd/containerd/bin/containerd-shim /mnt/sdb2/container/rootfs/bin/
 
-echo "ECL build status: building Kubernetes for container"
-go get -d k8s.io/kubernetes
-pushd $GOPATH/src/k8s.io/kubernetes
-git checkout release-1.13
-popd
-make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubeadm
-make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubectl
-make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubelet GOLDFLAGS='-w -extldflags "-static"' GOFLAGS='-tags=osusergo'
-cp $GOPATH/src/k8s.io/kubernetes/_output/bin/kube* /mnt/sdb2/container/rootfs/bin/
+#echo "ECL build status: building Kubernetes for container"
+#go get -d k8s.io/kubernetes
+#pushd $GOPATH/src/k8s.io/kubernetes
+#git checkout release-1.13
+#popd
+#make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubeadm
+#make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubectl
+#make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubelet GOLDFLAGS='-w -extldflags "-static"' GOFLAGS='-tags=osusergo'
+#cp $GOPATH/src/k8s.io/kubernetes/_output/bin/kube* /mnt/sdb2/container/rootfs/bin/
 
-echo "ECL build status: pulling crictl for container"
-VERSION="v1.13.0"
-wget --quiet https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-$VERSION-linux-amd64.tar.gz
-sudo tar zxvf crictl-$VERSION-linux-amd64.tar.gz -C /mnt/sdb2/container/rootfs/bin/
+#echo "ECL build status: pulling crictl for container"
+#VERSION="v1.13.0"
+#wget --quiet https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-$VERSION-linux-amd64.tar.gz
+#sudo tar zxvf crictl-$VERSION-linux-amd64.tar.gz -C /mnt/sdb2/container/rootfs/bin/
 
 echo "ECL build status: pulling cni plugins for container"
 CNI_VERSION="v0.7.4"
