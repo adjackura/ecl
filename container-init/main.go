@@ -99,7 +99,7 @@ func runKublet() {
 			"--container-runtime=remote",
 			"--container-runtime-endpoint=unix:///run/containerd/containerd.sock",
 			"--fail-swap-on=false",
-			"-v=2",
+			"-v=1",
 		}
 
 		d, err := ioutil.ReadFile("/var/lib/kubelet/kubeadm-flags.env")

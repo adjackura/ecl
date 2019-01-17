@@ -201,9 +201,6 @@
 	"linux": {
 		"namespaces": [
 			{
-				"type": "pid"
-			},
-			{
 				"type": "ipc"
 			},
 			{

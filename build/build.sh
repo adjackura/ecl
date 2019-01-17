@@ -61,10 +61,10 @@ mkdir -p /mnt/sdb2/container/rootfs/sys
 mkdir -p /mnt/sdb2/container/rootfs/var
 mkdir -p /mnt/sdb2/container/rootfs/dev/pts
 mkdir -p /mnt/sdb2/container/rootfs/dev/shm
-docker export $(docker create ubuntu) | tar -C /mnt/sdb2/container/rootfs -xf -
+
+docker build -t debian:kubernetes - < ecl/build/Dockerfile
+docker export $(docker create debian:kubernetes) | tar -C /mnt/sdb2/container/rootfs -xf -
 cp -r ecl/container /mnt/sdb2
-mkdir -p /mnt/sdb2/container/rootfs/etc/ssl/certs
-cp /etc/ssl/certs/ca-certificates.crt /mnt/sdb2/container/rootfs/etc/ssl/certs/ca-certificates.crt
 
 echo "ECL build status: installing Go"
 wget --quiet https://dl.google.com/go/go1.11.4.linux-amd64.tar.gz
