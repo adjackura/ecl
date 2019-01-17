@@ -26,7 +26,6 @@ type systemService struct {
 func run(path string, args ...string) error {
 	logger.Printf("Running command %q with args %q", path, args)
 	cmd := exec.Command(path, args...)
-	cmd.Env = []string{"PATH=/bin"}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
