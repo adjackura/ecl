@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
   iproute2 \
   util-linux \
   libseccomp2 \
+  ethtool \
   curl
 
 RUN curl -L -O https://storage.googleapis.com/cri-containerd-release/cri-containerd-1.2.2.linux-amd64.tar.gz && \
