@@ -41,7 +41,7 @@
             "SerialOutput": {
               "Port": 1,
               "StatusMatch": "ECL build status:",
-              "FailureMatch": "ECL build failed:",
+              "FailureMatch": "Finished running startup scripts.",
               "SuccessMatch": "ECL build finished"
             }
           }

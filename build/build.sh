@@ -1,5 +1,7 @@
 #! /bin/bash
 
+set -e 
+
 echo "ECL build status: installing dependencies"
 apt-get update  
 DEBIAN_FRONTEND=noninteractive apt-get -y install build-essential git-core bison flex libelf-dev bc refind libseccomp-dev pkg-config dosfstools
@@ -27,13 +29,6 @@ mkdir /mnt/sdb2/sbin
 mkdir /mnt/sdb2/bin
 mkdir -p /mnt/sdb2/etc/ssl/certs
 cp /etc/ssl/certs/ca-certificates.crt /mnt/sdb2/etc/ssl/certs/ca-certificates.crt
-
-echo "ECL build status: building the kernel"
-wget --quiet https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.20.tar.xz
-tar xf linux-4.20.tar.xz
-cp ecl/linux/.config linux-4.20/.config
-make -C linux-4.20 -j $(nproc)
-cp linux-4.20/arch/x86_64/boot/bzImage /mnt/sdb2/
 
 echo "ECL build status: setting up boot"
 refind-install --usedefault /dev/sdb1
@@ -65,6 +60,13 @@ mkdir -p /mnt/sdb2/container/rootfs/dev/shm
 docker build -t debian:kubernetes - < ecl/build/Dockerfile
 docker export $(docker create debian:kubernetes) | tar -C /mnt/sdb2/container/rootfs -xf -
 cp -r ecl/container /mnt/sdb2
+
+echo "ECL build status: building the kernel"
+wget --quiet https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.20.tar.xz
+tar xf linux-4.20.tar.xz
+cp ecl/linux/.config linux-4.20/.config
+make -C linux-4.20 -j $(nproc)
+cp linux-4.20/arch/x86_64/boot/bzImage /mnt/sdb2/
 
 echo "ECL build status: installing Go"
 wget --quiet https://dl.google.com/go/go1.11.4.linux-amd64.tar.gz
