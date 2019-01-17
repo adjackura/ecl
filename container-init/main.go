@@ -125,6 +125,9 @@ func main() {
 	if err := ioutil.WriteFile("/proc/sys/net/ipv4/ip_forward", []byte("1"), 0644); err != nil {
 		logger.Println(err)
 	}
+	if err := ioutil.WriteFile("/proc/sys/net/bridge/bridge-nf-call-iptables", []byte("1"), 0644); err != nil {
+		logger.Println(err)
+	}
 
 	// Run containerd
 	go func() {

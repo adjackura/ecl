@@ -89,8 +89,8 @@
 	"process": {
 		"terminal": false,
 		"user": {
-			"uid": 1,
-			"gid": 1
+			"uid": 0,
+			"gid": 0
 		},
 		"args": [
 			"/sbin/container-init"
