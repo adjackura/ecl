@@ -66,7 +66,7 @@ mkdir -p /mnt/sdb2/container/rootfs/var
 mkdir -p /mnt/sdb2/container/rootfs/dev/pts
 mkdir -p /mnt/sdb2/container/rootfs/dev/shm
 
-docker build -t debian:kubernetes - < ecl/build/Dockerfile
+docker build -t ubuntu:kubernetes - < ecl/build/Dockerfile
 docker export $(docker create ubuntu:kubernetes) | tar -C /mnt/sdb2/container/rootfs -xf -
 cp -r ecl/container /mnt/sdb2
 
