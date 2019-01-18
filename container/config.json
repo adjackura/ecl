@@ -19,12 +19,13 @@
 		{
 			"destination": "/dev",
 			"type": "tmpfs",
-			"source": "tmpfs",
+			"source": "devfs",
 			"options": [
 				"nosuid",
-				"strictatime",
+				"relatime",
 				"mode=755",
-				"size=65536k"
+				"size=65536k",
+				"rw"
 			]
 		},
 		{
@@ -70,7 +71,8 @@
 				"nosuid",
 				"noexec",
 				"nodev",
-				"ro"
+				"relatime",
+				"rw"
 			]
 		},
 		{
