@@ -95,7 +95,7 @@
 			"gid": 0
 		},
 		"args": [
-			"/bin/bash"
+			"/sbin/container-init"
 		],
 		"env": [
 			"PATH=/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/bin:/usr/local/sbin:/opt/bin"
@@ -118,7 +118,9 @@
 				"CAP_SETPCAP",
 				"CAP_SYS_CHROOT",
 				"CAP_NET_ADMIN",
-				"CAP_SYS_ADMIN"
+				"CAP_SYS_ADMIN",
+				"CAP_SYS_RESOURCE",
+				"CAP_SYS_NICE"
 			],
 			"effective": [
 				"CAP_AUDIT_WRITE",
@@ -136,7 +138,9 @@
 				"CAP_SETPCAP",
 				"CAP_SYS_CHROOT",
 				"CAP_NET_ADMIN",
-				"CAP_SYS_ADMIN"
+				"CAP_SYS_ADMIN",
+				"CAP_SYS_RESOURCE",
+				"CAP_SYS_NICE"
 			],
 			"inheritable": [
 				"CAP_AUDIT_WRITE",
@@ -154,7 +158,9 @@
 				"CAP_SETPCAP",
 				"CAP_SYS_CHROOT",
 				"CAP_NET_ADMIN",
-				"CAP_SYS_ADMIN"
+				"CAP_SYS_ADMIN",
+				"CAP_SYS_RESOURCE",
+				"CAP_SYS_NICE"
 			],
 			"permitted": [
 				"CAP_AUDIT_WRITE",
@@ -172,7 +178,9 @@
 				"CAP_SETPCAP",
 				"CAP_SYS_CHROOT",
 				"CAP_NET_ADMIN",
-				"CAP_SYS_ADMIN"
+				"CAP_SYS_ADMIN",
+				"CAP_SYS_RESOURCE",
+				"CAP_SYS_NICE"
 			],
 			"ambient": [
 				"CAP_AUDIT_WRITE",
@@ -190,7 +198,9 @@
 				"CAP_SETPCAP",
 				"CAP_SYS_CHROOT",
 				"CAP_NET_ADMIN",
-				"CAP_SYS_ADMIN"
+				"CAP_SYS_ADMIN",
+				"CAP_SYS_RESOURCE",
+				"CAP_SYS_NICE"
 			]
 		},
 		"rlimits": [],
