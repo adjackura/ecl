@@ -204,7 +204,7 @@
 			]
 		},
 		"rlimits": [],
-		"noNewPrivileges": true
+		"noNewPrivileges": false
 	},
 	"platform": {
         "os": "linux",
