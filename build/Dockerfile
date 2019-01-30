@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y \
   curl
 
 RUN curl -L -O https://storage.googleapis.com/cri-containerd-release/cri-containerd-1.2.2.linux-amd64.tar.gz && \
-  tar --no-overwrite-dir -C / -xzf cri-containerd-1.2.2.linux-amd64.tar.gz
+  tar --no-overwrite-dir -C / -xzf cri-containerd-1.2.2.linux-amd64.tar.gz && \
+  cp /usr/local/sbin/runc /runc
 
 RUN mkdir -p /opt/bin && \
   cd /opt/bin && \
