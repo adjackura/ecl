@@ -126,6 +126,7 @@
 				"CAP_SETPCAP",
 				"CAP_SETUID",
 				"CAP_SYS_ADMIN",
+				"CAP_SYS_BOOT",
 				"CAP_SYS_CHROOT",
 				"CAP_SYS_MODULE",
 				"CAP_SYS_NICE",
@@ -133,7 +134,10 @@
 				"CAP_SYS_PTRACE",
 				"CAP_SYS_RAWIO",
 				"CAP_SYS_RESOURCE",
-				"CAP_SYS_TTY_CONFIG"	
+				"CAP_SYS_TIME",
+				"CAP_SYS_TTY_CONFIG",
+				"CAP_SYSLOG",
+				"CAP_WAKE_ALARM"	
 			],
 			"effective": [
 				"CAP_AUDIT_CONTROL",
@@ -152,6 +156,7 @@
 				"CAP_LINUX_IMMUTABLE",
 				"CAP_MKNOD",
 				"CAP_NET_ADMIN",
+				"CAP_SYS_BOOT",
 				"CAP_NET_BIND_SERVICE",
 				"CAP_NET_RAW",
 				"CAP_SETGID",
@@ -166,7 +171,10 @@
 				"CAP_SYS_PTRACE",
 				"CAP_SYS_RAWIO",
 				"CAP_SYS_RESOURCE",
-				"CAP_SYS_TTY_CONFIG"
+				"CAP_SYS_TIME",
+				"CAP_SYS_TTY_CONFIG",
+				"CAP_SYSLOG",
+				"CAP_WAKE_ALARM"
 			],
 			"inheritable": [
 				"CAP_AUDIT_CONTROL",
@@ -185,6 +193,7 @@
 				"CAP_LINUX_IMMUTABLE",
 				"CAP_MKNOD",
 				"CAP_NET_ADMIN",
+				"CAP_SYS_BOOT",
 				"CAP_NET_BIND_SERVICE",
 				"CAP_NET_RAW",
 				"CAP_SETGID",
@@ -199,7 +208,10 @@
 				"CAP_SYS_PTRACE",
 				"CAP_SYS_RAWIO",
 				"CAP_SYS_RESOURCE",
-				"CAP_SYS_TTY_CONFIG"
+				"CAP_SYS_TIME",
+				"CAP_SYS_TTY_CONFIG",
+				"CAP_SYSLOG",
+				"CAP_WAKE_ALARM"
 			],
 			"permitted": [
 				"CAP_AUDIT_CONTROL",
@@ -218,6 +230,7 @@
 				"CAP_LINUX_IMMUTABLE",
 				"CAP_MKNOD",
 				"CAP_NET_ADMIN",
+				"CAP_SYS_BOOT",
 				"CAP_NET_BIND_SERVICE",
 				"CAP_NET_RAW",
 				"CAP_SETGID",
@@ -232,7 +245,10 @@
 				"CAP_SYS_PTRACE",
 				"CAP_SYS_RAWIO",
 				"CAP_SYS_RESOURCE",
-				"CAP_SYS_TTY_CONFIG"
+				"CAP_SYS_TIME",
+				"CAP_SYS_TTY_CONFIG",
+				"CAP_SYSLOG",
+				"CAP_WAKE_ALARM"
 			],
 			"ambient": [
 				"CAP_AUDIT_CONTROL",
@@ -251,6 +267,7 @@
 				"CAP_LINUX_IMMUTABLE",
 				"CAP_MKNOD",
 				"CAP_NET_ADMIN",
+				"CAP_SYS_BOOT",
 				"CAP_NET_BIND_SERVICE",
 				"CAP_NET_RAW",
 				"CAP_SETGID",
@@ -265,7 +282,10 @@
 				"CAP_SYS_PTRACE",
 				"CAP_SYS_RAWIO",
 				"CAP_SYS_RESOURCE",
-				"CAP_SYS_TTY_CONFIG"
+				"CAP_SYS_TIME",
+				"CAP_SYS_TTY_CONFIG",
+				"CAP_SYSLOG",
+				"CAP_WAKE_ALARM"
 			]
 		},
 		"rlimits": [],

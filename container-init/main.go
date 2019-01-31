@@ -99,7 +99,6 @@ func runKublet() {
 			"--runtime-request-timeout=15m",
 			"--container-runtime-endpoint=unix:///run/containerd/containerd.sock",
 			"--fail-swap-on=false",
-			"-v=1",
 		}
 
 		d, err := ioutil.ReadFile("/var/lib/kubelet/kubeadm-flags.env")
