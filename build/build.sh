@@ -96,33 +96,33 @@ go get -d -v ./...
 CGO_ENABLED=0 go build -ldflags '-s -w' -o /mnt/sdb2/container/rootfs/sbin/container-init
 popd
 
-echo "ECL build status: building runc for host"
+echo "ECL build status: building runc for host and container"
 go get -d -u github.com/opencontainers/runc
 make -C $GOPATH/src/github.com/opencontainers/runc static
 cp $GOPATH/src/github.com/opencontainers/runc/runc /mnt/sdb2/bin/
-#cp $GOPATH/src/github.com/opencontainers/runc/runc /mnt/sdb2/container/rootfs/bin/
+cp $GOPATH/src/github.com/opencontainers/runc/runc /mnt/sdb2/container/rootfs/bin/
 
-#echo "ECL build status: building containerd for container"
-#go get -d -u github.com/containerd/containerd
-#make -C $GOPATH/src/github.com/containerd/containerd EXTRA_FLAGS="-buildmode pie" EXTRA_LDFLAGS='-s -w -extldflags "-fno-PIC -static"' BUILDTAGS="no_btrfs netgo osusergo static_build"
-#cp $GOPATH/src/github.com/containerd/containerd/bin/ctr /mnt/sdb2/container/rootfs/bin/
-#cp $GOPATH/src/github.com/containerd/containerd/bin/containerd /mnt/sdb2/container/rootfs/bin/
-#cp $GOPATH/src/github.com/containerd/containerd/bin/containerd-shim /mnt/sdb2/container/rootfs/bin/
+echo "ECL build status: building containerd for container"
+go get -d -u github.com/containerd/containerd
+make -C $GOPATH/src/github.com/containerd/containerd EXTRA_FLAGS="-buildmode pie" EXTRA_LDFLAGS='-s -w -extldflags "-fno-PIC -static"' BUILDTAGS="no_btrfs netgo osusergo static_build"
+cp $GOPATH/src/github.com/containerd/containerd/bin/ctr /mnt/sdb2/container/rootfs/bin/
+cp $GOPATH/src/github.com/containerd/containerd/bin/containerd /mnt/sdb2/container/rootfs/bin/
+cp $GOPATH/src/github.com/containerd/containerd/bin/containerd-shim /mnt/sdb2/container/rootfs/bin/
 
-#echo "ECL build status: building Kubernetes for container"
-#go get -d k8s.io/kubernetes
-#pushd $GOPATH/src/k8s.io/kubernetes
-#git checkout release-1.13
-#popd
-#make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubeadm
-#make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubectl
-#make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubelet GOLDFLAGS='-w -extldflags "-static"' GOFLAGS='-tags=osusergo'
-#cp $GOPATH/src/k8s.io/kubernetes/_output/bin/kube* /mnt/sdb2/container/rootfs/bin/
+echo "ECL build status: building Kubernetes for container"
+go get -d k8s.io/kubernetes
+pushd $GOPATH/src/k8s.io/kubernetes
+git checkout release-1.13
+popd
+make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubeadm
+make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubectl
+make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubelet GOLDFLAGS='-w -extldflags "-static"' GOFLAGS='-tags=osusergo'
+cp $GOPATH/src/k8s.io/kubernetes/_output/bin/kube* /mnt/sdb2/container/rootfs/bin/
 
-#echo "ECL build status: pulling crictl for container"
-#VERSION="v1.13.0"
-#wget --quiet https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-$VERSION-linux-amd64.tar.gz
-#sudo tar zxvf crictl-$VERSION-linux-amd64.tar.gz -C /mnt/sdb2/container/rootfs/bin/
+echo "ECL build status: pulling crictl for container"
+VERSION="v1.13.0"
+wget --quiet https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-$VERSION-linux-amd64.tar.gz
+sudo tar zxvf crictl-$VERSION-linux-amd64.tar.gz -C /mnt/sdb2/container/rootfs/bin/
 
 echo "ECL build status: pulling cni plugins for container"
 CNI_VERSION="v0.7.4"
