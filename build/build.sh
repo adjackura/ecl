@@ -109,15 +109,15 @@ cp $GOPATH/src/github.com/containerd/containerd/bin/ctr /mnt/sdb2/container/root
 cp $GOPATH/src/github.com/containerd/containerd/bin/containerd /mnt/sdb2/container/rootfs/bin/
 cp $GOPATH/src/github.com/containerd/containerd/bin/containerd-shim /mnt/sdb2/container/rootfs/bin/
 
-echo "ECL build status: building Kubernetes for container"
-go get -d k8s.io/kubernetes
-pushd $GOPATH/src/k8s.io/kubernetes
-git checkout release-1.13
-popd
-make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubeadm
-make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubectl
-make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubelet GOLDFLAGS='-w -extldflags "-static"' GOFLAGS='-tags=osusergo'
-cp $GOPATH/src/k8s.io/kubernetes/_output/bin/kube* /mnt/sdb2/container/rootfs/bin/
+#echo "ECL build status: building Kubernetes for container"
+#go get -d k8s.io/kubernetes
+#pushd $GOPATH/src/k8s.io/kubernetes
+#git checkout release-1.13
+#popd
+#make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubeadm
+#make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubectl
+#make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubelet GOLDFLAGS='-w -extldflags "-static"' GOFLAGS='-tags=osusergo'
+#cp $GOPATH/src/k8s.io/kubernetes/_output/bin/kube* /mnt/sdb2/container/rootfs/bin/
 
 echo "ECL build status: pulling crictl for container"
 VERSION="v1.13.0"
