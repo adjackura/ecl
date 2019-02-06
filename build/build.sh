@@ -35,12 +35,12 @@ git clone https://github.com/adjackura/ecl.git -b kubernetes
 echo "AgileOS build status: setting up the disk"
 parted -s /dev/sdb \
   mklabel gpt \
-  mkpart ESP fat32 1MiB 260MiB \
+  mkpart ESP fat16 1MiB 20MiB \
   set 1 esp on \
-  mkpart primary ext4 260MiB 100%
+  mkpart primary ext4 20MiB 100%
 sync
-mkfs.vfat -F32 /dev/sdb1
-mkfs.ext4 -F /dev/sdb2
+mkfs.vfat -S 4096 /dev/sdb1
+mkfs.ext4 -b 4096 -F /dev/sdb2
 e2label /dev/sdb2 root
 
 mkdir /mnt/sdb1
