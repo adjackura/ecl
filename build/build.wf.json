@@ -19,7 +19,7 @@
           },
           {
             "Name": "disk-install",
-            "SizeGb": "10",
+            "SizeGb": "1",
             "Type": "pd-ssd"
           }
         ]
@@ -40,9 +40,9 @@
           {"Name": "inst-build",
             "SerialOutput": {
               "Port": 1,
-              "StatusMatch": "ECL build status:",
+              "StatusMatch": "AgileOS build status:",
               "FailureMatch": "Finished running startup scripts.",
-              "SuccessMatch": "ECL build finished"
+              "SuccessMatch": "AgileOS build finished"
             }
           }
         ]

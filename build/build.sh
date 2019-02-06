@@ -1,6 +1,6 @@
 #! /bin/bash
 
-echo "ECL build status: installing dependencies"
+echo "AgileOS build status: installing dependencies"
 apt-get update  
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
   curl \
@@ -35,9 +35,9 @@ git clone https://github.com/adjackura/ecl.git -b kubernetes
 echo "AgileOS build status: setting up the disk"
 parted -s /dev/sdb \
   mklabel gpt \
-  mkpart ESP fat32 1MiB 551MiB \
+  mkpart ESP fat32 1MiB 260MiB \
   set 1 esp on \
-  mkpart primary ext4 551MiB 100%
+  mkpart primary ext4 260MiB 100%
 sync
 mkfs.vfat -F32 /dev/sdb1
 mkfs.ext4 -F /dev/sdb2
@@ -78,6 +78,7 @@ CGO_ENABLED=0 go build -ldflags '-s -w' -o /mnt/sdb2/sbin/init
 popd
 
 echo "AgileOS build finished"
+sleep 20
 exit
 
 echo "AgileOS build status: setting up container"

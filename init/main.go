@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -165,7 +166,11 @@ func start(path string, args ...string) error {
 
 func main() {
 	logger.Println("Starting AgileOS...")
-	select {}
+	for {
+		select {
+		case <-time.After(1 * time.Hour):
+		}
+	}
 
 	logger.Println("Mounting all the things")
 	mounts()
