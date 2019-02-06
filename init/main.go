@@ -164,7 +164,8 @@ func start(path string, args ...string) error {
 }
 
 func main() {
-	logger.Println("Starting ecl...")
+	logger.Println("Starting AgileOS...")
+	select {}
 
 	logger.Println("Mounting all the things")
 	mounts()
