@@ -62,7 +62,7 @@ wget --quiet https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.20.tar.xz
 tar xf linux-4.20.tar.xz
 cp ecl/linux/.config linux-4.20/.config
 make -C linux-4.20 -j $(nproc)
-cp linux-4.20/arch/x86_64/boot/bzImage /mnt/sdb2/
+cp linux-4.20/arch/x86_64/boot/bzImage /mnt/sdb1/
 
 echo "AgileOS build status: installing Go"
 wget --quiet https://dl.google.com/go/go1.11.4.linux-amd64.tar.gz
