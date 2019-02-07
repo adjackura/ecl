@@ -185,6 +185,8 @@ func main() {
 	if err := start("/bin/bash"); err != nil {
 		logger.Fatalln(err)
 	}
+	select {}
+
 	if err := start("/sbin/container-init"); err != nil {
 		logger.Fatalln(err)
 	}
