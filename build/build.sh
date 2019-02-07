@@ -18,7 +18,8 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
   gnupg2 \
   software-properties-common\
   liblz4-tool \
-  ca-certificates
+  ca-certificates \
+  clang
 curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add -
 add-apt-repository \
    "deb [arch=amd64] https://download.docker.com/linux/debian \
@@ -62,7 +63,7 @@ echo "AgileOS build status: building the kernel"
 wget --quiet https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.20.tar.xz
 tar xf linux-4.20.tar.xz
 cp ecl/linux/.config linux-4.20/.config
-make -C linux-4.20 -j $(nproc)
+make CC=clang HOSTCC=clang -C linux-4.20 -j $(nproc)
 cp linux-4.20/arch/x86_64/boot/bzImage /mnt/sdb1/
 
 echo "AgileOS build status: installing Go"
@@ -82,10 +83,6 @@ echo "AgileOS build status: setting up container"
 docker build -t ubuntu:kubernetes - < ecl/build/Dockerfile
 docker export $(docker create ubuntu:kubernetes) | tar -C /mnt/sdb2 -xf -
 cp -r ecl/container /mnt/sdb2
-
-echo "AgileOS build finished"
-sleep 20
-exit
 
 echo "AgileOS build status: building init for container"
 pushd ecl/container-init
