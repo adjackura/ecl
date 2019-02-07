@@ -164,13 +164,16 @@ func start(path string, args ...string) error {
 	return nil
 }
 
-func main() {
-	logger.Println("Starting AgileOS...")
+func sleepForever() {
 	for {
 		select {
 		case <-time.After(1 * time.Hour):
 		}
 	}
+}
+
+func main() {
+	logger.Println("Starting AgileOS...")
 
 	logger.Println("Mounting all the things")
 	mounts()

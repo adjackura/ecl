@@ -17,6 +17,7 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
   apt-transport-https \
   gnupg2 \
   software-properties-common\
+  liblz4-tool \
   ca-certificates
 curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add -
 add-apt-repository \
@@ -76,10 +77,6 @@ pushd ecl/init
 go get -d -v ./...
 CGO_ENABLED=0 go build -ldflags '-s -w' -o /mnt/sdb2/sbin/init
 popd
-
-echo "AgileOS build finished"
-sleep 20
-exit
 
 echo "AgileOS build status: setting up container"
 #mkdir -p /mnt/sdb2/container/rootfs/bin
