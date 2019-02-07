@@ -78,10 +78,6 @@ go get -d -v ./...
 CGO_ENABLED=0 go build -ldflags '-s -w' -o /mnt/sdb2/sbin/init
 popd
 
-echo "AgileOS build finished"
-sleep 20
-exit
-
 echo "AgileOS build status: setting up container"
 #mkdir -p /mnt/sdb2/container/rootfs/bin
 #mkdir -p /mnt/sdb2/container/rootfs/sbin
@@ -95,6 +91,10 @@ docker build -t ubuntu:kubernetes - < ecl/build/Dockerfile
 # docker export $(docker create ubuntu:kubernetes) | tar -C /mnt/sdb2/container/rootfs -xf -
 docker export $(docker create ubuntu:kubernetes) | tar -C /mnt/sdb2 -xf -
 cp -r ecl/container /mnt/sdb2
+
+echo "AgileOS build finished"
+sleep 20
+exit
 
 echo "AgileOS build status: building init for container"
 pushd ecl/container-init

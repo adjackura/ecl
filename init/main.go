@@ -182,6 +182,9 @@ func main() {
 	//if err := start("/bin/runc", "run", "-b", "/container", "container"); err != nil {
 	//	logger.Fatalln(err)
 	//}
+	if err := start("/bin/bash"); err != nil {
+		logger.Fatalln(err)
+	}
 	if err := start("/sbin/container-init"); err != nil {
 		logger.Fatalln(err)
 	}
