@@ -79,16 +79,7 @@ CGO_ENABLED=0 go build -ldflags '-s -w' -o /mnt/sdb2/sbin/init
 popd
 
 echo "AgileOS build status: setting up container"
-#mkdir -p /mnt/sdb2/container/rootfs/bin
-#mkdir -p /mnt/sdb2/container/rootfs/sbin
-#mkdir -p /mnt/sdb2/container/rootfs/proc
-#mkdir -p /mnt/sdb2/container/rootfs/sys
-#mkdir -p /mnt/sdb2/container/rootfs/var
-#mkdir -p /mnt/sdb2/container/rootfs/dev/pts
-#mkdir -p /mnt/sdb2/container/rootfs/dev/shm
-
 docker build -t ubuntu:kubernetes - < ecl/build/Dockerfile
-# docker export $(docker create ubuntu:kubernetes) | tar -C /mnt/sdb2/container/rootfs -xf -
 docker export $(docker create ubuntu:kubernetes) | tar -C /mnt/sdb2 -xf -
 cp -r ecl/container /mnt/sdb2
 
@@ -99,22 +90,17 @@ exit
 echo "AgileOS build status: building init for container"
 pushd ecl/container-init
 go get -d -v ./...
-#CGO_ENABLED=0 go build -ldflags '-s -w' -o /mnt/sdb2/container/rootfs/sbin/container-init
 CGO_ENABLED=0 go build -ldflags '-s -w' -o /mnt/sdb2/sbin/container-init
 popd
 
-echo "AgileOS build status: building runc for host and container"
+echo "AgileOS build status: building runc for container"
 go get -d -u github.com/opencontainers/runc
 make -C $GOPATH/src/github.com/opencontainers/runc static
 cp $GOPATH/src/github.com/opencontainers/runc/runc /mnt/sdb2/
-#cp $GOPATH/src/github.com/opencontainers/runc/runc /mnt/sdb2/container/rootfs/bin/
 
 echo "AgileOS build status: building containerd for container"
 go get -d -u github.com/containerd/containerd
 make -C $GOPATH/src/github.com/containerd/containerd EXTRA_FLAGS="-buildmode pie" EXTRA_LDFLAGS='-s -w -extldflags "-fno-PIC -static"' BUILDTAGS="no_btrfs netgo osusergo static_build"
-#cp $GOPATH/src/github.com/containerd/containerd/bin/ctr /mnt/sdb2/container/rootfs/bin/
-#cp $GOPATH/src/github.com/containerd/containerd/bin/containerd /mnt/sdb2/container/rootfs/bin/
-#cp $GOPATH/src/github.com/containerd/containerd/bin/containerd-shim /mnt/sdb2/container/rootfs/bin/
 cp $GOPATH/src/github.com/containerd/containerd/bin/ctr /mnt/sdb2/bin/
 cp $GOPATH/src/github.com/containerd/containerd/bin/containerd /mnt/sdb2/bin/
 cp $GOPATH/src/github.com/containerd/containerd/bin/containerd-shim /mnt/sdb2/bin/
@@ -128,18 +114,5 @@ cp $GOPATH/src/github.com/containerd/containerd/bin/containerd-shim /mnt/sdb2/bi
 #make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubectl
 #make -C $GOPATH/src/k8s.io/kubernetes WHAT=cmd/kubelet GOLDFLAGS='-w -extldflags "-static"' GOFLAGS='-tags=osusergo'
 #cp $GOPATH/src/k8s.io/kubernetes/_output/bin/kube* /mnt/sdb2/container/rootfs/bin/
-
-echo "AgileOS build status: pulling crictl for container"
-VERSION="v1.13.0"
-wget --quiet https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-$VERSION-linux-amd64.tar.gz
-#sudo tar zxvf crictl-$VERSION-linux-amd64.tar.gz -C /mnt/sdb2/container/rootfs/bin/
-sudo tar zxvf crictl-$VERSION-linux-amd64.tar.gz -C /mnt/sdb2/bin/
-
-echo "AgileOS build status: pulling cni plugins for container"
-CNI_VERSION="v0.7.4"
-#mkdir -p /mnt/sdb2/container/rootfs/opt/cni/bin
-#curl -L "https://github.com/containernetworking/plugins/releases/download/${CNI_VERSION}/cni-plugins-amd64-${CNI_VERSION}.tgz" | tar -C /mnt/sdb2/container/rootfs/opt/cni/bin -xz
-mkdir -p /mnt/sdb2/opt/cni/bin
-curl -L "https://github.com/containernetworking/plugins/releases/download/${CNI_VERSION}/cni-plugins-amd64-${CNI_VERSION}.tgz" | tar -C /mnt/sdb2/opt/cni/bin -xz
 
 echo "AgileOS build finished"
