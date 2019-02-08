@@ -1,6 +1,10 @@
 #! /bin/bash
 
 echo "AgileOS build status: installing dependencies"
+
+deb http://apt.llvm.org/stretch/ llvm-toolchain-stretch main
+deb-src http://apt.llvm.org/stretch/ llvm-toolchain-stretch main
+
 apt-get update  
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
   curl \
@@ -16,10 +20,9 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
   dosfstools \
   apt-transport-https \
   gnupg2 \
-  software-properties-common\
+  software-properties-common \
   liblz4-tool \
-  ca-certificates \
-  clang
+  ca-certificates
 curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add -
 add-apt-repository \
    "deb [arch=amd64] https://download.docker.com/linux/debian \
