@@ -65,10 +65,10 @@ func getMetadata() (*attributesJSON, error) {
 	return &metadata, json.Unmarshal(md, &metadata)
 }
 
-func runKubeadm() {
+func runKubeadm() error {
 	md, err := getMetadata()
 	if err != nil {
-		logger.Println(err)
+		return err
 	}
 
 	kubeadmArgs := []string{
@@ -84,9 +84,7 @@ func runKubeadm() {
 		kubeadmArgs = append(kubeadmArgs, strings.Split(md.Args, ";")...)
 	}
 
-	if err := run("/opt/bin/kubeadm", kubeadmArgs...); err != nil {
-		logger.Println(err)
-	}
+	return run("/opt/bin/kubeadm", kubeadmArgs...)
 }
 
 func runKublet() {
@@ -113,7 +111,7 @@ func runKublet() {
 		if err := run("/opt/bin/kubelet", kubletArgs...); err != nil {
 			logger.Println(err)
 		}
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Second)
 	}
 }
 
@@ -138,9 +136,8 @@ func main() {
 		}
 	}()
 
-	// Run kublet
-	go runKublet()
-	runKubeadm()
-
-	select {}
+	if err := runKubeadm(); err != nil {
+		logger.Fatal(err)
+	}
+	runKublet()
 }
