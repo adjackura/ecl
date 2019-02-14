@@ -136,8 +136,10 @@ func main() {
 		}
 	}()
 
+	go runKublet()
 	if err := runKubeadm(); err != nil {
 		logger.Fatal(err)
 	}
-	runKublet()
+
+	select {}
 }
