@@ -179,12 +179,8 @@ func main() {
 	logger.Println("Mounting all the things")
 	mounts()
 
-	logger.Println("Starting container...")
-	//if err := start("/bin/runc", "run", "-b", "/container", "container"); err != nil {
-	//	logger.Fatalln(err)
-	//}
-
-	if err := start("/sbin/container-init"); err != nil {
+	logger.Println("Starting kos-init...")
+	if err := start("/sbin/kos-init"); err != nil {
 		logger.Fatalln(err)
 	}
 

@@ -57,6 +57,7 @@ mkdir /mnt/sdb2/sbin
 mkdir /mnt/sdb2/bin
 mkdir -p /mnt/sdb2/etc/ssl/certs
 cp /etc/ssl/certs/ca-certificates.crt /mnt/sdb2/etc/ssl/certs/ca-certificates.crt
+cp -r ecl/rootfs /mnt/sdb2
 
 echo "AgileOS build status: setting up boot"
 refind-install --usedefault /dev/sdb1
@@ -66,7 +67,7 @@ echo "AgileOS build status: building the kernel"
 wget --quiet https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.20.tar.xz
 tar xf linux-4.20.tar.xz
 cp ecl/linux/.config linux-4.20/.config
-make CC=clang HOSTCC=clang -C linux-4.20 -j $(nproc)
+make -C linux-4.20 -j $(nproc)
 cp linux-4.20/arch/x86_64/boot/bzImage /mnt/sdb1/
 
 echo "AgileOS build status: installing Go"
