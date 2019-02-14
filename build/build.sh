@@ -57,7 +57,6 @@ mkdir /mnt/sdb2/sbin
 mkdir /mnt/sdb2/bin
 mkdir -p /mnt/sdb2/etc/ssl/certs
 cp /etc/ssl/certs/ca-certificates.crt /mnt/sdb2/etc/ssl/certs/ca-certificates.crt
-cp -r ecl/rootfs /mnt/sdb2
 
 echo "AgileOS build status: setting up boot"
 refind-install --usedefault /dev/sdb1
@@ -83,23 +82,23 @@ go get -d -v ./...
 CGO_ENABLED=0 go build -ldflags '-s -w' -o /mnt/sdb2/sbin/init
 popd
 
-echo "AgileOS build status: setting up container"
+echo "AgileOS build status: setting up kos"
 docker build -t ubuntu:kubernetes - < ecl/build/Dockerfile
 docker export $(docker create ubuntu:kubernetes) | tar -C /mnt/sdb2 -xf -
-cp -r ecl/container /mnt/sdb2
+cp -r ecl/rootfs/* /mnt/sdb2
 
-echo "AgileOS build status: building init for container"
-pushd ecl/container-init
+echo "AgileOS build status: building kos-init"
+pushd ecl/kos-init
 go get -d -v ./...
-CGO_ENABLED=0 go build -ldflags '-s -w' -o /mnt/sdb2/sbin/container-init
+CGO_ENABLED=0 go build -ldflags '-s -w' -o /mnt/sdb2/sbin/kos-init
 popd
 
-echo "AgileOS build status: building runc for container"
+echo "AgileOS build status: building runc for kos"
 go get -d -u github.com/opencontainers/runc
 make -C $GOPATH/src/github.com/opencontainers/runc static
 cp $GOPATH/src/github.com/opencontainers/runc/runc /mnt/sdb2/opt/bin/
 
-echo "AgileOS build status: building containerd for container"
+echo "AgileOS build status: building containerd for kos"
 go get -d -u github.com/containerd/containerd
 make -C $GOPATH/src/github.com/containerd/containerd EXTRA_FLAGS="-buildmode pie" EXTRA_LDFLAGS='-s -w -extldflags "-fno-PIC -static"' BUILDTAGS="no_btrfs netgo osusergo static_build"
 cp $GOPATH/src/github.com/containerd/containerd/bin/ctr /mnt/sdb2/bin/

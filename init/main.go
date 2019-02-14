@@ -151,7 +151,7 @@ func start(path string, args ...string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
-	cmd.Env = []string{"PATH=/bin:/opt/bin:/sbin"}
+	cmd.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/bin:/usr/local/sbin:/opt/bin"}
 	if err := cmd.Start(); err != nil {
 		return err
 	}
