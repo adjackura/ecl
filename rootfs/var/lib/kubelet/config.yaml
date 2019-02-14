@@ -1,0 +1,5 @@
+kind: KubeletConfiguration
+apiVersion: kubelet.config.k8s.io/v1beta1
+cgroupDriver: cgroupfs
+# This is a bug workaround: https://github.com/kubernetes/kubernetes/blob/05183bffe5cf690b418718aa107f5655e4ac0618/pkg/kubelet/cm/container_manager_linux.go#L209
+failSwapOn: false

@@ -1,0 +1,24 @@
+state = "/run/containerd"
+root = "/var/lib/containerd"
+snapshotter = "io.containerd.snapshotter.v1.overlayfs"
+differ = "io.containerd.differ.v1.base-diff"
+
+[grpc]
+  address = "/run/containerd/containerd.sock"
+  uid = 0
+  gid = 0
+
+[debug]
+  address = "/run/containerd/debug.sock"
+  level = "info"
+
+[metrics]
+  address = ""
+
+[plugins]
+  [plugins.cri.containerd]
+    snapshotter = "overlayfs"
+    [plugins.cri.containerd.default_runtime]
+      runtime_type = "io.containerd.runtime.v1.linux"
+      runtime_engine = "/opt/bin/runc"
+      runtime_root = ""
