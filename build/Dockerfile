@@ -21,7 +21,7 @@ RUN mkdir -p /opt/bin && \
   chmod +x kubeadm kubelet kubectl
 
 RUN VERSION="v1.13.0" && \
-  curl -L "https://github.com/kubernetes-sigs/cri-tools/releases/download/${VERSION}/crictl-${VERSION}-linux-amd64.tar.gz" | tar -C /bin/ -xz
+  curl -L "https://github.com/kubernetes-sigs/cri-tools/releases/download/${VERSION}/crictl-${VERSION}-linux-amd64.tar.gz" | tar -C /opt/bin/ -xz
 
 RUN CNI_VERSION="v0.7.4" && \
   mkdir -p /opt/cni/bin && \

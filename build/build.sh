@@ -96,7 +96,7 @@ popd
 echo "AgileOS build status: building runc for container"
 go get -d -u github.com/opencontainers/runc
 make -C $GOPATH/src/github.com/opencontainers/runc static
-cp $GOPATH/src/github.com/opencontainers/runc/runc /mnt/sdb2/
+cp $GOPATH/src/github.com/opencontainers/runc/runc /mnt/sdb2/opt/bin/
 
 echo "AgileOS build status: building containerd for container"
 go get -d -u github.com/containerd/containerd

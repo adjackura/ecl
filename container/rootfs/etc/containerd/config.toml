@@ -20,5 +20,5 @@ differ = "io.containerd.differ.v1.base-diff"
     snapshotter = "overlayfs"
     [plugins.cri.containerd.default_runtime]
       runtime_type = "io.containerd.runtime.v1.linux"
-      runtime_engine = "/runc"
+      runtime_engine = "/opt/bin/runc"
       runtime_root = ""

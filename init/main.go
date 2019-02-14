@@ -151,6 +151,7 @@ func start(path string, args ...string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
+	cmd.Env = []string{"PATH=/bin:/opt/bin:/sbin"}
 	if err := cmd.Start(); err != nil {
 		return err
 	}
@@ -182,10 +183,6 @@ func main() {
 	//if err := start("/bin/runc", "run", "-b", "/container", "container"); err != nil {
 	//	logger.Fatalln(err)
 	//}
-	if err := start("/bin/bash"); err != nil {
-		logger.Fatalln(err)
-	}
-	select {}
 
 	if err := start("/sbin/container-init"); err != nil {
 		logger.Fatalln(err)
