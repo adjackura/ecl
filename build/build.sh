@@ -86,6 +86,7 @@ echo "AgileOS build status: setting up kos"
 docker build -t ubuntu:kubernetes - < ecl/build/Dockerfile
 docker export $(docker create ubuntu:kubernetes) | tar -C /mnt/sdb2 -xf -
 cp -r ecl/rootfs/* /mnt/sdb2
+mkdir -p /mnt/sdb2/etc/kubernetes/manifests
 
 echo "AgileOS build status: building kos-init"
 pushd ecl/kos-init
