@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/csv"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -16,8 +17,17 @@ import (
 )
 
 var (
-	logger = log.New(os.Stdout, "[init]: ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
+	logger *log.Logger
 )
+
+func init() {
+	kmsg, err := os.OpenFile("/dev/kmsg", os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("Error, falling back to stdout:", err)
+		kmsg = os.Stdout
+	}
+	logger = log.New(kmsg, "[init]: ", log.Lmicroseconds)
+}
 
 const (
 	nodev    = unix.MS_NODEV
@@ -154,7 +164,7 @@ func (s *systemService) isRunning() bool {
 
 func (s *systemService) start() error {
 	cmd := exec.Command(s.path, s.args...)
-	cmd.Env = []string{"PATH=/bin"}
+	cmd.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/bin:/usr/local/sbin:/opt/bin"}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
