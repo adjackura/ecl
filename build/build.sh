@@ -31,6 +31,7 @@ echo "AgileOS build status: cloning ecl"
 git clone https://github.com/adjackura/ecl.git
 
 echo "AgileOS build status: setting up the disk"
+sync
 parted -s /dev/sdb \
   mklabel gpt \
   mkpart ESP fat16 1MiB 20MiB \
@@ -68,6 +69,7 @@ wget --quiet https://go.dev/dl/go1.17.5.linux-amd64.tar.gz
 tar -C /usr/local -xzf go1.17.5.linux-amd64.tar.gz
 export PATH=$PATH:/usr/local/go/bin
 export GOPATH=~/go
+export GOCACHE=~/go/go-build
 go version
 
 echo "AgileOS build status: building init for host"
@@ -77,21 +79,25 @@ CGO_ENABLED=0 go build -ldflags '-s -w' -o /mnt/sdb2/sbin/init
 popd
 
 echo "AgileOS build status: building caaos"
-pushd services/caaos
+pushd ecl/services/caaos
 go get -d -v ./...
 go build -tags 'netgo osusergo' -buildmode pie -ldflags '-s -w -extldflags "-static"' -o /mnt/sdb2/bin/caaos
 popd
 
 echo "AgileOS build status: building runc"
-go get -d -u github.com/opencontainers/runc
-make -C $GOPATH/src/github.com/opencontainers/runc static
-cp $GOPATH/src/github.com/opencontainers/runc/runc /mnt/sdb2/opt/bin/
+git clone https://github.com/opencontainers/runc
+pushd runc
+make static
+cp runc /mnt/sdb2/bin/
+popd
 
 echo "AgileOS build status: building containerd"
-go get -d -u github.com/containerd/containerd
-make -C $GOPATH/src/github.com/containerd/containerd EXTRA_FLAGS="-buildmode pie" EXTRA_LDFLAGS='-s -w -extldflags "-fno-PIC -static"' BUILDTAGS="no_btrfs netgo osusergo static_build"
-cp $GOPATH/src/github.com/containerd/containerd/bin/ctr /mnt/sdb2/bin/
-cp $GOPATH/src/github.com/containerd/containerd/bin/containerd /mnt/sdb2/bin/
-cp $GOPATH/src/github.com/containerd/containerd/bin/containerd-shim /mnt/sdb2/bin/
+git clone https://github.com/containerd/containerd
+pushd containerd
+make EXTRA_FLAGS="-buildmode pie" EXTRA_LDFLAGS='-s -w -linkmode external -extldflags "-fno-PIC -static"' BUILDTAGS="no_btrfs netgo osusergo static_build"
+cp bin/ctr /mnt/sdb2/bin/
+cp bin/containerd /mnt/sdb2/bin/
+cp bin/containerd-shim /mnt/sdb2/bin/
+popd
 
 echo "AgileOS build finished"

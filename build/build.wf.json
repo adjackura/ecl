@@ -35,8 +35,12 @@
               "Source": "disk-install"
             }
           ],
-          "MachineType": "n1-highcpu-8",
-          "StartupScript": "build.sh"
+          "MachineType": "e2-highcpu-8",
+          "StartupScript": "build.sh",
+          "Scopes": [
+            "https://www.googleapis.com/auth/devstorage.read_only",
+            "https://www.googleapis.com/auth/logging.write"
+          ]
         }
       ]
     },
