@@ -1,3 +1,4 @@
+version = 2
 state = "/run/containerd"
 root = "/var/lib/containerd"
 snapshotter = "io.containerd.snapshotter.v1.overlayfs"

@@ -136,6 +136,11 @@ func mounts() {
 	mkdir("/sys", 0755)
 	mount("sysfs", "/sys", "sysfs", noexec|nosuid|nodev, "")
 
+	mount("cgroup2", "/sys/fs/cgroup", "cgroup2", noexec|nosuid|nodev, "")
+	return
+
+	// This is old cgroupv1 stuff
+
 	// mount cgroup root tmpfs
 	mount("cgroup_root", "/sys/fs/cgroup", "tmpfs", nodev|noexec|nosuid, "mode=755,size=10m")
 	// mount cgroups filesystems for all enabled cgroups
