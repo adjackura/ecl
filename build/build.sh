@@ -1,10 +1,6 @@
 #! /bin/bash
 
 echo "AgileOS build status: installing dependencies"
-
-deb http://apt.llvm.org/stretch/ llvm-toolchain-stretch main
-deb-src http://apt.llvm.org/stretch/ llvm-toolchain-stretch main
-
 apt-get update  
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
   wget \
@@ -15,7 +11,6 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
   flex \
   libelf-dev \
   bc \
-  refind \
   libseccomp-dev \
   pkg-config \
   dosfstools \
@@ -24,6 +19,12 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
   software-properties-common \
   liblz4-tool \
   ca-certificates
+
+echo "deb http://apt.llvm.org/buster/ llvm-toolchain-stretch main" >> /etc/apt/sources.list
+wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
+
+apt-get update  
+DEBIAN_FRONTEND=noninteractive apt-get install -y clang
 
 set -e 
 
@@ -38,7 +39,7 @@ parted -s /dev/sdb \
   set 1 esp on \
   mkpart primary ext4 20MiB 100%
 sync
-mkfs.vfat -S 4096 /dev/sdb1
+mkfs.fat -F 16 -S 4096 /dev/sdb1
 mkfs.ext4 -b 4096 -F /dev/sdb2
 e2label /dev/sdb2 root
 
@@ -50,19 +51,23 @@ mkdir /mnt/sdb2/dev
 mkdir /mnt/sdb2/sbin
 mkdir /mnt/sdb2/bin
 mkdir -p /mnt/sdb2/etc/ssl/certs
+mkdir -p /mnt/sdb1/EFI/BOOT
 cp /etc/ssl/certs/ca-certificates.crt /mnt/sdb2/etc/ssl/certs/ca-certificates.crt
 cp -r ecl/rootfs/* /mnt/sdb2
-
-echo "AgileOS build status: setting up boot"
-refind-install --usedefault /dev/sdb1
-cp -r ecl/EFI /mnt/sdb1
 
 echo "AgileOS build status: building the kernel"
 wget --quiet https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.15.tar.xz
 tar xf linux-5.15.tar.xz
 cp ecl/linux/.config linux-5.15/.config
-make -C linux-5.15 -j $(nproc)
+make -C linux-5.15 -j $(nproc) CC=clang
 cp linux-5.15/arch/x86_64/boot/bzImage /mnt/sdb1/
+
+echo "AgileOS build status: setting up boot"
+objcopy \
+  --add-section .osrel="os-release" --change-section-vma .osrel=0x20000 \
+  --add-section .cmdline="cmdline" --change-section-vma .cmdline=0x30000 \
+  --add-section .linux="linux-5.15/arch/x86_64/boot/bzImage" --change-section-vma .linux=0x40000 \
+  /usr/lib/systemd/boot/efi/linuxx64.efi.stub linux.efi /mnt/sdb1/EFI/BOOT/BOOTX64.EFI
 
 echo "AgileOS build status: installing Go"
 wget --quiet https://go.dev/dl/go1.17.5.linux-amd64.tar.gz
