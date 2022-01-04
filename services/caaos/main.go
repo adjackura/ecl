@@ -121,7 +121,7 @@ func runContainer(ctx context.Context, client *containerd.Client, id string, arg
 		return err
 	}
 
-	rnd := fmt.Sprintf("%d", time.Now().Unix())
+	name := fmt.Sprintf("%d", time.Now().Unix())
 
 	logger.Println("creating container")
 	opts := []oci.SpecOpts{
@@ -139,9 +139,9 @@ func runContainer(ctx context.Context, client *containerd.Client, id string, arg
 
 	container, err := client.NewContainer(
 		ctx,
-		rnd,
+		name,
 		//containerd.WithImage(img),
-		containerd.WithNewSnapshot(rnd, img),
+		containerd.WithNewSnapshot(name, img),
 		containerd.WithNewSpec(opts...),
 	)
 	if err != nil {
@@ -151,7 +151,7 @@ func runContainer(ctx context.Context, client *containerd.Client, id string, arg
 
 	// create a new task
 	logger.Println("creating task")
-	task, err := container.NewTask(ctx, cio.NewCreator(append([]cio.Opt{cio.WithStdio})...))
+	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStdio))
 	if err != nil {
 		return err
 	}

@@ -35,9 +35,9 @@ echo "AgileOS build status: setting up the disk"
 sync
 parted -s /dev/sdb \
   mklabel gpt \
-  mkpart ESP fat16 1MiB 20MiB \
+  mkpart ESP fat16 1MiB 131MiB \
   set 1 esp on \
-  mkpart primary ext4 20MiB 100%
+  mkpart primary ext4 131MiB 100%
 sync
 mkfs.fat -F 16 -S 4096 /dev/sdb1
 mkfs.ext4 -b 4096 -F /dev/sdb2
@@ -60,14 +60,13 @@ wget --quiet https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.15.tar.xz
 tar xf linux-5.15.tar.xz
 cp ecl/linux/.config linux-5.15/.config
 make -C linux-5.15 -j $(nproc) CC=clang
-cp linux-5.15/arch/x86_64/boot/bzImage /mnt/sdb1/
 
 echo "AgileOS build status: setting up boot"
 objcopy \
-  --add-section .osrel="os-release" --change-section-vma .osrel=0x20000 \
-  --add-section .cmdline="cmdline" --change-section-vma .cmdline=0x30000 \
+  --add-section .osrel="ecl/os-release" --change-section-vma .osrel=0x20000 \
+  --add-section .cmdline="ecl/cmdline" --change-section-vma .cmdline=0x30000 \
   --add-section .linux="linux-5.15/arch/x86_64/boot/bzImage" --change-section-vma .linux=0x40000 \
-  /usr/lib/systemd/boot/efi/linuxx64.efi.stub linux.efi /mnt/sdb1/EFI/BOOT/BOOTX64.EFI
+  /usr/lib/systemd/boot/efi/linuxx64.efi.stub /mnt/sdb1/EFI/BOOT/BOOTX64.EFI
 
 echo "AgileOS build status: installing Go"
 wget --quiet https://go.dev/dl/go1.17.5.linux-amd64.tar.gz
@@ -102,7 +101,7 @@ pushd containerd
 make EXTRA_FLAGS="-buildmode pie" EXTRA_LDFLAGS='-s -w -linkmode external -extldflags "-fno-PIC -static"' BUILDTAGS="no_btrfs netgo osusergo static_build"
 cp bin/ctr /mnt/sdb2/bin/
 cp bin/containerd /mnt/sdb2/bin/
-cp bin/containerd-shim /mnt/sdb2/bin/
+cp bin/containerd-shim-runc-v2 /mnt/sdb2/bin/
 popd
 
 echo "AgileOS build finished"
