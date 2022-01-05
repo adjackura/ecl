@@ -98,7 +98,7 @@ popd
 echo "AgileOS build status: building containerd"
 git clone https://github.com/containerd/containerd
 pushd containerd
-make EXTRA_FLAGS="-buildmode pie" EXTRA_LDFLAGS='-s -w -linkmode external -extldflags "-fno-PIC -static"' BUILDTAGS="no_btrfs netgo osusergo static_build"
+make EXTRA_FLAGS="-buildmode pie" EXTRA_LDFLAGS='-s -w -extldflags "-fno-PIC -static"' BUILDTAGS="static_build,no_btrfs,osusergo,netgo"
 cp bin/ctr /mnt/sdb2/bin/
 cp bin/containerd /mnt/sdb2/bin/
 cp bin/containerd-shim-runc-v2 /mnt/sdb2/bin/
