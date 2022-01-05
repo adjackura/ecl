@@ -1,2 +1,3 @@
 NAME=containerd
 PATH=/bin/containerd
+ARGS=--log-level=debug
