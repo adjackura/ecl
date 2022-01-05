@@ -15,8 +15,3 @@ differ = "io.containerd.differ.v1.base-diff"
 
 [metrics]
   address = ""
-
-[plugins]
-  [plugins.linux]
-    no_shim = false
-    shim_debug = true
