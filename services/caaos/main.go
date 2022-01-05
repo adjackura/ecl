@@ -16,6 +16,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
+	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/oci"
 )
@@ -112,7 +113,19 @@ func watchMetadata(ctx context.Context) (*attributesJSON, error) {
 	}
 }
 
-func runContainer(ctx context.Context, client *containerd.Client, ref string, spec string) error {
+func withSpecFromBytes(p []byte, clear bool) oci.SpecOpts {
+	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
+		if clear {
+			*s = oci.Spec{} // make sure spec is cleared.
+		}
+		if err := json.Unmarshal(p, s); err != nil {
+			return err
+		}
+		return nil
+	}
+}
+
+func runContainer(ctx context.Context, client *containerd.Client, ref string, spec string, clear bool) error {
 	logger.Println("pulling image")
 	img, err := client.Pull(ctx, ref, containerd.WithPullUnpack)
 	if err != nil {
@@ -126,7 +139,7 @@ func runContainer(ctx context.Context, client *containerd.Client, ref string, sp
 		ctx,
 		name,
 		containerd.WithNewSnapshot(name, img),
-		containerd.WithNewSpec(oci.WithImageConfig(img), oci.WithSpecFromBytes([]byte(spec))),
+		containerd.WithNewSpec(oci.WithImageConfig(img), withSpecFromBytes([]byte(spec), clear)),
 	)
 	if err != nil {
 		return err
@@ -201,7 +214,7 @@ func main() {
 			continue
 		}
 
-		if err := runContainer(ctx, client, md.ContainerRef, md.ContainerSpec); err != nil {
+		if err := runContainer(ctx, client, md.ContainerRef, md.ContainerSpec, false); err != nil {
 			logger.Println("Error:", err)
 			time.Sleep(5 * time.Second)
 		}

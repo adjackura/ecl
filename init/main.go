@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"encoding/csv"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -61,33 +60,6 @@ func symlink(oldpath string, newpath string) {
 	}
 }
 
-func cgroupList() []string {
-	list := []string{}
-	f, err := os.Open("/proc/cgroups")
-	if err != nil {
-		logger.Printf("cannot open /proc/cgroups: %v", err)
-		return list
-	}
-	defer f.Close()
-	reader := csv.NewReader(f)
-	// tab delimited
-	reader.Comma = '\t'
-	// four fields
-	reader.FieldsPerRecord = 4
-	cgroups, err := reader.ReadAll()
-	if err != nil {
-		logger.Printf("cannot parse /proc/cgroups: %v", err)
-		return list
-	}
-	for _, cg := range cgroups {
-		// see if enabled
-		if cg[3] == "1" {
-			list = append(list, cg[0])
-		}
-	}
-	return list
-}
-
 func write(path string, value string) {
 	err := ioutil.WriteFile(path, []byte(value), 0600)
 	if err != nil {
@@ -137,21 +109,6 @@ func mounts() {
 	mount("sysfs", "/sys", "sysfs", noexec|nosuid|nodev, "")
 
 	mount("cgroup2", "/sys/fs/cgroup", "cgroup2", noexec|nosuid|nodev, "")
-	return
-
-	// This is old cgroupv1 stuff
-
-	// mount cgroup root tmpfs
-	mount("cgroup_root", "/sys/fs/cgroup", "tmpfs", nodev|noexec|nosuid, "mode=755,size=10m")
-	// mount cgroups filesystems for all enabled cgroups
-	for _, cg := range cgroupList() {
-		path := filepath.Join("/sys/fs/cgroup", cg)
-		mkdir(path, 0555)
-		mount(cg, path, "cgroup", noexec|nosuid|nodev, cg)
-	}
-
-	// use hierarchy for memory
-	write("/sys/fs/cgroup/memory/memory.use_hierarchy", "1")
 }
 
 type systemService struct {
