@@ -35,9 +35,10 @@ var (
 )
 
 type attributesJSON struct {
-	ContainerRef  string `json:"container-ref"`
-	ContainerSpec string `json:"container-spec"`
-	StopOnExit    bool   `json:"stop-on-exit,string"`
+	ContainerRef      string `json:"container-ref"`
+	ContainerSpec     string `json:"container-spec"`
+	OverwriteDefaults bool   `json:"overwrite-defaults,string"`
+	StopOnExit        bool   `json:"stop-on-exit,string"`
 }
 
 func runCmd(ctx context.Context, path string, args []string) error {
@@ -214,7 +215,7 @@ func main() {
 			continue
 		}
 
-		if err := runContainer(ctx, client, md.ContainerRef, md.ContainerSpec, false); err != nil {
+		if err := runContainer(ctx, client, md.ContainerRef, md.ContainerSpec, md.OverwriteDefaults); err != nil {
 			logger.Println("Error:", err)
 			time.Sleep(5 * time.Second)
 		}

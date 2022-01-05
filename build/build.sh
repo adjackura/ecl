@@ -4,7 +4,6 @@ echo "AgileOS build status: installing dependencies"
 apt-get update  
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
   wget \
-  curl \
   build-essential \
   git-core \
   bison \
