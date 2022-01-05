@@ -18,8 +18,6 @@ import (
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/oci"
-	"github.com/google/shlex"
-	specs "github.com/opencontainers/runtime-spec/specs-go"
 )
 
 const (
@@ -36,8 +34,8 @@ var (
 )
 
 type attributesJSON struct {
-	ContainerID   string `json:"container-id"`
-	ContainerArgs string `json:"container-args"`
+	ContainerRef  string `json:"container-ref"`
+	ContainerSpec string `json:"container-spec"`
 	StopOnExit    bool   `json:"stop-on-exit,string"`
 }
 
@@ -114,9 +112,9 @@ func watchMetadata(ctx context.Context) (*attributesJSON, error) {
 	}
 }
 
-func runContainer(ctx context.Context, client *containerd.Client, id string, args []string) error {
+func runContainer(ctx context.Context, client *containerd.Client, ref string, spec string) error {
 	logger.Println("pulling image")
-	img, err := client.Pull(ctx, id, containerd.WithPullUnpack)
+	img, err := client.Pull(ctx, ref, containerd.WithPullUnpack)
 	if err != nil {
 		return err
 	}
@@ -124,25 +122,11 @@ func runContainer(ctx context.Context, client *containerd.Client, id string, arg
 	name := fmt.Sprintf("%d", time.Now().Unix())
 
 	logger.Println("creating container")
-	opts := []oci.SpecOpts{
-		oci.WithImageConfig(img),
-		oci.WithHostNamespace(specs.NetworkNamespace),
-		oci.WithHostHostsFile,
-		oci.WithHostResolvconf,
-		//oci.WithTTY,
-		oci.WithPrivileged,
-		//oci.WithRootFSPath("/cntr"),
-	}
-	if len(args) > 0 {
-		opts = append(opts, oci.WithProcessArgs(args...))
-	}
-
 	container, err := client.NewContainer(
 		ctx,
 		name,
-		//containerd.WithImage(img),
 		containerd.WithNewSnapshot(name, img),
-		containerd.WithNewSpec(opts...),
+		containerd.WithNewSpec(oci.WithImageConfig(img), oci.WithSpecFromBytes([]byte(spec))),
 	)
 	if err != nil {
 		return err
@@ -155,9 +139,6 @@ func runContainer(ctx context.Context, client *containerd.Client, id string, arg
 	if err != nil {
 		return err
 	}
-
-	pid := task.Pid()
-	fmt.Println(pid)
 
 	// Setup wait channel
 	statusC, err := task.Wait(ctx)
@@ -215,27 +196,18 @@ func main() {
 			continue
 		}
 
-		if md.ContainerID == "" {
+		if md.ContainerRef == "" {
 			logger.Println("No container set, waiting...")
 			continue
 		}
 
-		var args []string
-		if md.ContainerArgs != "" {
-			args, err = shlex.Split(md.ContainerArgs)
-			if err != nil {
-				logger.Println("Error parsing arguments:", err)
-				continue
-			}
-		}
-
-		if err := runContainer(ctx, client, md.ContainerID, args); err != nil {
+		if err := runContainer(ctx, client, md.ContainerRef, md.ContainerSpec); err != nil {
 			logger.Println("Error:", err)
 			time.Sleep(5 * time.Second)
 		}
 
 		if md.StopOnExit {
-			logger.Printf("Finished running %s, shutting down", md.ContainerID)
+			logger.Printf("Finished running %s, shutting down", md.ContainerRef)
 			syscall.Sync()
 			if err := syscall.Reboot(syscall.LINUX_REBOOT_CMD_POWER_OFF); err != nil {
 				logger.Println("Error calling shutdown:", err)
@@ -243,6 +215,6 @@ func main() {
 			select {}
 		}
 
-		logger.Printf("Finished running %s, waiting for next command...", md.ContainerID)
+		logger.Printf("Finished running %s, waiting for next command...", md.ContainerRef)
 	}
 }

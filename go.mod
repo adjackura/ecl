@@ -3,9 +3,9 @@ module github.com/adjackura/ecl
 go 1.17
 
 require (
-	github.com/containerd/containerd v1.5.8
+	github.com/containerd/containerd v1.5.9
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
-	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
+	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417 // indirect
 	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e
 )
 
@@ -33,7 +33,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	go.opencensus.io v0.23.0 // indirect
-	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f // indirect
+	golang.org/x/net v0.0.0-20220105145211-5b0dc2dfae98 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/genproto v0.0.0-20211223182754-3ac035c7e7cb // indirect
