@@ -1,0 +1,11 @@
+steps:
+- name: gcr.io/kaniko-project/executor:v1.6.0
+  args:
+  - --dockerfile=init/Dockerfile
+  - --context=/workspace
+  - --destination=us-docker.pkg.dev/$PROJECT_ID/ecl/init:latest
+  - --cache=true
+  - --cache-ttl=144h
+options:
+  env:
+  - GOPROXY=https://proxy.golang.org

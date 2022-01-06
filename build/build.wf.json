@@ -5,7 +5,7 @@
     "publish_project": "${PROJECT}"
   },
   "Sources": {
-    "build.sh": "./build.sh"
+    "build.sh": "./build_image.sh"
   },
   "Steps": {
     "setup-disks": {
@@ -14,11 +14,6 @@
           "Name": "disk-build",
           "SourceImage": "projects/debian-cloud/global/images/family/debian-11",
           "SizeGb": "200",
-          "Type": "pd-ssd"
-        },
-        {
-          "Name": "disk-install",
-          "SizeGb": "1",
           "Type": "pd-ssd"
         }
       ]
@@ -38,7 +33,7 @@
           "MachineType": "e2-highcpu-8",
           "StartupScript": "build.sh",
           "Scopes": [
-            "https://www.googleapis.com/auth/devstorage.read_only",
+            "https://www.googleapis.com/auth/devstorage.read_write",
             "https://www.googleapis.com/auth/logging.write"
           ]
         }

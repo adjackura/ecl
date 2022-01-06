@@ -1,0 +1,21 @@
+steps:
+- name: gcr.io/kaniko-project/executor:v1.6.0
+  id: caaos
+  args:
+  - --dockerfile=services/caaos/Dockerfile
+  - --context=/workspace
+  - --destination=us-docker.pkg.dev/$PROJECT_ID/ecl/caaos:latest
+  - --cache=true
+  - --cache-ttl=144h
+- name: gcr.io/kaniko-project/executor:v1.6.0
+  id: containerd
+  args:
+  - --dockerfile=services/containerd/Dockerfile
+  - --context=/workspace
+  - --destination=us-docker.pkg.dev/$PROJECT_ID/ecl/containerd:latest
+  - --cache=false
+  - --cache-ttl=144h
+options:
+  machineType: 'E2_HIGHCPU_8'
+  env:
+  - GOPROXY=https://proxy.golang.org

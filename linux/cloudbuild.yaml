@@ -1,0 +1,12 @@
+timeout: 1800s
+
+steps:
+- name: gcr.io/kaniko-project/executor:v1.6.0
+  args:
+  - --dockerfile=linux/Dockerfile
+  - --context=/workspace
+  - --destination=us-docker.pkg.dev/$PROJECT_ID/ecl/kernel:latest
+  - --cache=false
+  - --cache-ttl=144h
+options:
+  machineType: 'E2_HIGHCPU_32'
