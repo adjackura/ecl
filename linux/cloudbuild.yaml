@@ -1,12 +1,16 @@
 timeout: 1800s
 
 steps:
-- name: gcr.io/kaniko-project/executor:v1.6.0
+- name: launcher.gcr.io/google/debian11
   args:
-  - --dockerfile=linux/Dockerfile
-  - --context=/workspace
-  - --destination=us-docker.pkg.dev/$PROJECT_ID/ecl/kernel:latest
-  - --cache=false
-  - --cache-ttl=144h
+  - linux/build.sh
+  entrypoint: /bin/bash
 options:
+  dynamic_substitutions: true
   machineType: 'E2_HIGHCPU_32'
+artifacts:
+  objects:
+    location: gs://${_PACKAGE_BUCKET}
+    paths: [kernel.tar.gz]
+substitutions:
+    _PACKAGE_BUCKET: ${PROJECT_ID}/ecl

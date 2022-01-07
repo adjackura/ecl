@@ -1,11 +1,15 @@
 steps:
-- name: gcr.io/kaniko-project/executor:v1.6.0
+- name: gcr.io/cloud-builders/go:1.17
   args:
-  - --dockerfile=init/Dockerfile
-  - --context=/workspace
-  - --destination=us-docker.pkg.dev/$PROJECT_ID/ecl/init:latest
-  - --cache=true
-  - --cache-ttl=144h
+  - init/build.sh
+  entrypoint: /bin/sh
 options:
+  dynamic_substitutions: true
   env:
   - GOPROXY=https://proxy.golang.org
+artifacts:
+  objects:
+    location: gs://${_PACKAGE_BUCKET}
+    paths: [init/init.tar.gz]
+substitutions:
+    _PACKAGE_BUCKET: ${PROJECT_ID}/ecl

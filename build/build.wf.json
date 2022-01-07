@@ -2,10 +2,22 @@
   "Name": "ecl-build",
   "Vars": {
     "build_date": "${TIMESTAMP}",
-    "publish_project": "${PROJECT}"
+    "publish_project": "${PROJECT}",
+    "package_bucket": {
+      "Required": true
+    },
+    "kernel_package": {
+      "Required": true
+    },
+    "packages": {
+      "Required": false
+    },
+    "image_output_bucket": {
+      "Required": true
+    }
   },
   "Sources": {
-    "build.sh": "./build_image.sh"
+    "build.sh": "./build.sh"
   },
   "Steps": {
     "setup-disks": {
@@ -25,13 +37,15 @@
           "Disks": [
             {
               "Source": "disk-build"
-            },
-            {
-              "Source": "disk-install"
             }
           ],
           "MachineType": "e2-highcpu-8",
           "StartupScript": "build.sh",
+          "Metadata": {
+            "package-bucket": "${package_bucket}",
+            "kernel-package": "${kernel_package}",
+            "packages": "${packages}"
+          },
           "Scopes": [
             "https://www.googleapis.com/auth/devstorage.read_write",
             "https://www.googleapis.com/auth/logging.write"
@@ -53,18 +67,21 @@
         }
       ]
     },
-    "del-build": {
-      "DeleteResources": {
-        "Instances": [
-          "inst-build"
-        ]
-      }
+    "copy-gcs-object": {
+      "CopyGCSObjects": [
+        {
+          "Source": "${OUTSPATH}/disk.tar.gz",
+          "Destination": "gs://${image_output_bucket}/v${build_date}/disk.tar.gz"
+        }
+      ]
     },
     "create-image": {
       "CreateImages": [
         {
           "Name": "agile-os-v${build_date}",
-          "SourceDisk": "disk-install",
+          "RawDisk": {
+            "Source": "gs://${image_output_bucket}/v${build_date}/disk.tar.gz"
+          },
           "GuestOsFeatures": [
             "VIRTIO_SCSI_MULTIQUEUE",
             "UEFI_COMPATIBLE",
@@ -85,11 +102,11 @@
     "wait-for-build": [
       "run-build"
     ],
-    "del-build": [
+    "copy-gcs-object": [
       "wait-for-build"
     ],
     "create-image": [
-      "del-build"
+      "copy-gcs-object"
     ]
   }
 }

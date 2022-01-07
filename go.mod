@@ -4,7 +4,6 @@ go 1.17
 
 require (
 	github.com/containerd/containerd v1.5.9
-	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417 // indirect
 	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e
 )
