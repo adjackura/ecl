@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -70,7 +71,6 @@ func write(path string, value string) {
 func mounts() {
 	mkdir("/mnt", 0755)
 	mkdir("/root", 0700)
-	mkdir("/cntr", 0755)
 
 	// mount proc filesystem
 	mkdir("/proc", 0755)
@@ -115,6 +115,7 @@ type systemService struct {
 	name, desc, path string
 	args             []string
 	running          bool
+	delay            string
 	mx               sync.RWMutex
 }
 
@@ -125,14 +126,23 @@ func (s *systemService) isRunning() bool {
 }
 
 func (s *systemService) start() error {
+	if s.delay != "" {
+		delay, err := time.ParseDuration(s.delay)
+		if err != nil {
+			logger.Printf("Error parsing delay for %s: %v", s.name, err)
+		}
+		time.Sleep(delay)
+	}
 	cmd := exec.Command(s.path, s.args...)
 	cmd.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/bin:/usr/local/sbin:/opt/bin"}
 	kmsg, err := os.OpenFile("/dev/kmsg", os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		kmsg = os.Stdout
 	}
+
 	cmd.Stdout = kmsg
 	cmd.Stderr = kmsg
+
 	if err := cmd.Start(); err != nil {
 		logger.Fatalln(err)
 	}
@@ -153,6 +163,14 @@ func main() {
 
 	logger.Println("Mounting all the things")
 	mounts()
+
+	logger.Println("Running ACPI listener")
+	go func() {
+		if err := runACPIListener(); err != nil {
+			logger.Println("Error running acpi listener:", err)
+			return
+		}
+	}()
 
 	logger.Println("Reading service files")
 	svcFileDir := "/etc/init"
@@ -187,6 +205,8 @@ func main() {
 				svc.path = strings.Trim(entry[1], `"`)
 			case "ARGS":
 				svc.args = strings.Split(strings.Replace(entry[1], " ", "", -1), ",")
+			case "DELAY":
+				svc.delay = strings.Trim(entry[1], `"`)
 			}
 		}
 

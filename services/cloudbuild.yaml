@@ -9,6 +9,16 @@ steps:
   args:
   - services/containerd/build.sh
   entrypoint: /bin/sh
+- name: gcr.io/cloud-builders/go:1.17
+  id: otelopscol
+  args:
+  - services/otelopscol/build.sh
+  entrypoint: /bin/sh
+- name: gcr.io/cloud-builders/go:1.17
+  id: google-osconfig-agent
+  args:
+  - services/google-osconfig-agent/build.sh
+  entrypoint: /bin/sh
 options:
   dynamic_substitutions: true
   machineType: 'E2_HIGHCPU_8'
@@ -17,6 +27,6 @@ options:
 artifacts:
   objects:
     location: gs://${_PACKAGE_BUCKET}
-    paths: [services/caaos/caaos.tar.gz, services/containerd/containerd.tar.gz]
+    paths: [services/caaos/caaos.tar.gz, services/containerd/containerd.tar.gz, services/otelopscol/otelopscol.tar.gz, services/google-osconfig-agent/google-osconfig-agent.tar.gz]
 substitutions:
     _PACKAGE_BUCKET: ${PROJECT_ID}/ecl

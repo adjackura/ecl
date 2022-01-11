@@ -12,7 +12,7 @@ KERNEL_PACKAGE=$(curl "http://metadata/computeMetadata/v1/instance/attributes/ke
 PACKAGES=$(curl "http://metadata/computeMetadata/v1/instance/attributes/packages" -H "Metadata-Flavor: Google")
 
 echo "AgileOS build status: setting up the disk"
-fallocate -l 1G disk.raw
+fallocate -l 10G disk.raw
 parted -s disk.raw \
   mklabel gpt \
   mkpart ESP fat16 1MiB 131MiB \

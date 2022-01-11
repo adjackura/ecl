@@ -1,0 +1,348 @@
+{
+    "Name": "ecl-build",
+    "Vars": {
+        "hello-world": "Hello World!",
+        "write": "echo \"Hello World! $(cat /proc/uptime)\"",
+        "agile_image": "projects/ajackura-dev/global/images/agile-os-v1641587728"
+    },
+    "Steps": {
+        "run-deb1": {
+            "CreateInstances": [
+                {
+                    "Name": "inst-deb1",
+                    "Disks": [
+                        {
+                            "initializeParams": {
+                                "sourceImage": "projects/debian-cloud/global/images/family/debian-11",
+                                "diskSize": "10"
+                            }
+                        }
+                    ],
+                    "MachineType": "e2-medium",
+                    "Metadata": {
+                        "startup-script": "${write}"
+                    }
+                }
+            ]
+        },
+        "wait-for-deb1": {
+            "WaitForInstancesSignal": [
+                {
+                    "Name": "inst-deb1",
+                    "Interval": ".1s",
+                    "SerialOutput": {
+                        "Port": 1,
+                        "SuccessMatch": "${hello-world}"
+                    }
+                }
+            ]
+        },
+        "run-deb2": {
+            "CreateInstances": [
+                {
+                    "Name": "inst-deb2",
+                    "Disks": [
+                        {
+                            "initializeParams": {
+                                "sourceImage": "projects/debian-cloud/global/images/family/debian-11",
+                                "diskSize": "10"
+                            }
+                        }
+                    ],
+                    "MachineType": "e2-medium",
+                    "Metadata": {
+                        "startup-script": "${write}"
+                    }
+                }
+            ]
+        },
+        "wait-for-deb2": {
+            "WaitForInstancesSignal": [
+                {
+                    "Name": "inst-deb2",
+                    "Interval": ".1s",
+                    "SerialOutput": {
+                        "Port": 1,
+                        "SuccessMatch": "${hello-world}"
+                    }
+                }
+            ]
+        },
+        "run-deb3": {
+            "CreateInstances": [
+                {
+                    "Name": "inst-deb3",
+                    "Disks": [
+                        {
+                            "initializeParams": {
+                                "sourceImage": "projects/debian-cloud/global/images/family/debian-11",
+                                "diskSize": "10"
+                            }
+                        }
+                    ],
+                    "MachineType": "e2-medium",
+                    "Metadata": {
+                        "startup-script": "${write}"
+                    }
+                }
+            ]
+        },
+        "wait-for-deb3": {
+            "WaitForInstancesSignal": [
+                {
+                    "Name": "inst-deb3",
+                    "Interval": ".1s",
+                    "SerialOutput": {
+                        "Port": 1,
+                        "SuccessMatch": "${hello-world}"
+                    }
+                }
+            ]
+        },
+        "run-agile1": {
+            "CreateInstances": [
+                {
+                    "Name": "inst-agile1",
+                    "Disks": [
+                        {
+                            "initializeParams": {
+                                "sourceImage": "${agile_image}",
+                                "diskSize": "10"
+                            }
+                        }
+                    ],
+                    "MachineType": "e2-medium",
+                    "Metadata": {
+                        "container-ref": "docker.io/library/busybox:latest",
+                        "container-spec": "{\"ociVersion\":\"1.0.2\",\"process\":{\"args\":[\"/bin/sh\", \"-c\", \"echo \\\"Hello World! `cat /proc/uptime`\\\"\"]},\"hostname\":\"mycontainer\"}",
+                        "stop-on-exit": "true"
+                    }
+                }
+            ]
+        },
+        "wait-for-agile1": {
+            "WaitForInstancesSignal": [
+                {
+                    "Name": "inst-agile1",
+                    "Interval": ".1s",
+                    "SerialOutput": {
+                        "Port": 1,
+                        "SuccessMatch": "${hello-world}"
+                    }
+                }
+            ]
+        },
+        "run-agile2": {
+            "CreateInstances": [
+                {
+                    "Name": "inst-agile2",
+                    "Disks": [
+                        {
+                            "initializeParams": {
+                                "sourceImage": "${agile_image}",
+                                "diskSize": "10"
+                            }
+                        }
+                    ],
+                    "MachineType": "e2-medium",
+                    "Metadata": {
+                        "container-ref": "docker.io/library/busybox:latest",
+                        "container-spec": "{\"ociVersion\":\"1.0.2\",\"process\":{\"args\":[\"/bin/sh\", \"-c\", \"echo \\\"Hello World! `cat /proc/uptime`\\\"\"]},\"hostname\":\"mycontainer\"}",
+                        "stop-on-exit": "true"
+                    }
+                }
+            ]
+        },
+        "wait-for-agile2": {
+            "WaitForInstancesSignal": [
+                {
+                    "Name": "inst-agile2",
+                    "Interval": ".1s",
+                    "SerialOutput": {
+                        "Port": 1,
+                        "SuccessMatch": "${hello-world}"
+                    }
+                }
+            ]
+        },
+        "run-agile3": {
+            "CreateInstances": [
+                {
+                    "Name": "inst-agile3",
+                    "Disks": [
+                        {
+                            "initializeParams": {
+                                "sourceImage": "${agile_image}",
+                                "diskSize": "10"
+                            }
+                        }
+                    ],
+                    "MachineType": "e2-medium",
+                    "Metadata": {
+                        "container-ref": "docker.io/library/busybox:latest",
+                        "container-spec": "{\"ociVersion\":\"1.0.2\",\"process\":{\"args\":[\"/bin/sh\", \"-c\", \"echo \\\"Hello World! `cat /proc/uptime`\\\"\"]},\"hostname\":\"mycontainer\"}",
+                        "stop-on-exit": "true"
+                    }
+                }
+            ]
+        },
+        "wait-for-agile3": {
+            "WaitForInstancesSignal": [
+                {
+                    "Name": "inst-agile3",
+                    "Interval": ".1s",
+                    "SerialOutput": {
+                        "Port": 1,
+                        "SuccessMatch": "${hello-world}"
+                    }
+                }
+            ]
+        },
+        "run-cos1": {
+            "CreateInstances": [
+                {
+                    "Name": "inst-cos1",
+                    "Disks": [
+                        {
+                            "initializeParams": {
+                                "sourceImage": "projects/cos-cloud/global/images/family/cos-stable",
+                                "diskSize": "10"
+                            }
+                        }
+                    ],
+                    "MachineType": "e2-medium",
+                    "Metadata": {
+                        "startup-script": "${write} > /dev/ttys0"
+                    }
+                }
+            ]
+        },
+        "wait-for-cos1": {
+            "WaitForInstancesSignal": [
+                {
+                    "Name": "inst-cos1",
+                    "Interval": ".1s",
+                    "SerialOutput": {
+                        "Port": 1,
+                        "SuccessMatch": "${hello-world}"
+                    }
+                }
+            ]
+        },
+        "run-cos2": {
+            "CreateInstances": [
+                {
+                    "Name": "inst-cos2",
+                    "Disks": [
+                        {
+                            "initializeParams": {
+                                "sourceImage": "projects/cos-cloud/global/images/family/cos-stable",
+                                "diskSize": "10"
+                            }
+                        }
+                    ],
+                    "MachineType": "e2-medium",
+                    "Metadata": {
+                        "startup-script": "${write} > /dev/ttys0"
+                    }
+                }
+            ]
+        },
+        "wait-for-cos2": {
+            "WaitForInstancesSignal": [
+                {
+                    "Name": "inst-cos2",
+                    "Interval": ".1s",
+                    "SerialOutput": {
+                        "Port": 1,
+                        "SuccessMatch": "${hello-world}"
+                    }
+                }
+            ]
+        },
+        "run-cos3": {
+            "CreateInstances": [
+                {
+                    "Name": "inst-cos3",
+                    "Disks": [
+                        {
+                            "initializeParams": {
+                                "sourceImage": "projects/cos-cloud/global/images/family/cos-stable",
+                                "diskSize": "10"
+                            }
+                        }
+                    ],
+                    "MachineType": "e2-medium",
+                    "Metadata": {
+                        "startup-script": "${write} > /dev/ttys0"
+                    }
+                }
+            ]
+        },
+        "wait-for-cos3": {
+            "WaitForInstancesSignal": [
+                {
+                    "Name": "inst-cos3",
+                    "Interval": ".1s",
+                    "SerialOutput": {
+                        "Port": 1,
+                        "SuccessMatch": "${hello-world}"
+                    }
+                }
+            ]
+        }
+    },
+    "Dependencies": {
+        "wait-for-deb1": [
+            "run-deb1"
+        ],
+        "run-deb2": [
+            "wait-for-deb1"
+        ],
+        "wait-for-deb2": [
+            "run-deb2"
+        ],
+        "run-deb3": [
+            "wait-for-deb2"
+        ],
+        "wait-for-deb3": [
+            "run-deb3"
+        ],
+        "run-agile1": [
+            "wait-for-deb3"
+        ],
+        "wait-for-agile1": [
+            "run-agile1"
+        ],
+        "run-agile2": [
+            "wait-for-agile1"
+        ],
+        "wait-for-agile2": [
+            "run-agile2"
+        ],
+        "run-agile3": [
+            "wait-for-agile2"
+        ],
+        "wait-for-agile3": [
+            "run-agile3"
+        ],
+        "run-cos1": [
+            "wait-for-agile3"
+        ],
+        "wait-for-cos1": [
+            "run-cos1"
+        ],
+        "run-cos2": [
+            "wait-for-cos1"
+        ],
+        "wait-for-cos2": [
+            "run-cos2"
+        ],
+        "run-cos3": [
+            "wait-for-cos2"
+        ],
+        "wait-for-cos3": [
+            "run-cos3"
+        ]
+    }
+}

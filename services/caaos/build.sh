@@ -1,3 +1,5 @@
+set -ex
+
 go mod download
 
 cd services/caaos

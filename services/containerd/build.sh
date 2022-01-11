@@ -1,3 +1,5 @@
+set -ex
+
 apk add --no-cache libseccomp-static libseccomp-dev pkgconfig
 
 cd services/containerd

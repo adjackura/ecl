@@ -1,0 +1,4 @@
+NAME=otelopscol
+PATH=/bin/otelopscol
+ARGS=--config=/etc/otelopscol/config.yaml
+DELAY=5s
