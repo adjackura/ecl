@@ -17,9 +17,10 @@ apt-get install -y \
   liblz4-tool
 apt-get build-dep -y systemd
 
-curl -s https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.15.9.tar.xz | tar -Jxf -
-cp linux/.config linux-5.15.9/.config 
-make -C linux-5.15.9 -j $(nproc) \
+KERNEL_VERSION='5.15.14'
+curl -s https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-${KERNEL_VERSION}.tar.xz | tar -Jxf -
+cp linux/.config linux-${KERNEL_VERSION}/.config 
+make -C linux-${KERNEL_VERSION} -j $(nproc) \
   CC=clang-13 \
   LD=ld.lld-13 \
   AR=llvm-ar-13 \
@@ -43,7 +44,7 @@ mkdir pkgroot
 objcopy \
   --add-section .osrel="init/etc/os-release" --change-section-vma .osrel=0x20000 \
   --add-section .cmdline="linux/cmdline" --change-section-vma .cmdline=0x30000 \
-  --add-section .linux="linux-5.15.9/arch/x86_64/boot/bzImage" --change-section-vma .linux=0x40000 \
+  --add-section .linux="linux-${KERNEL_VERSION}/arch/x86_64/boot/bzImage" --change-section-vma .linux=0x40000 \
   systemd-250/build/src/boot/efi/linuxx64.efi.stub pkgroot/BOOTX64.EFI
   
 tar -czvf kernel.tar.gz -C pkgroot .

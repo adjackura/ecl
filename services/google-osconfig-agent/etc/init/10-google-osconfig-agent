@@ -1,3 +1,0 @@
-NAME=google-osconfig-agent
-PATH=/bin/google_osconfig_agent
-ARGS=-disable_local_logging=true,-stdout

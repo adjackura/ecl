@@ -2,32 +2,27 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"golang.org/x/sys/unix"
 )
 
 var (
-	logger *log.Logger
+	writerChan = make(chan string, 10)
+	logger     = log.New(&consoleWriter{name: "init"}, "", log.LstdFlags|log.Lmicroseconds)
+	start      = time.Now()
 )
-
-func init() {
-	kmsg, err := os.OpenFile("/dev/kmsg", os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		fmt.Println("Error, falling back to stdout:", err)
-		kmsg = os.Stdout
-	}
-	logger = log.New(kmsg, "[init]: ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
-}
 
 const (
 	nodev    = unix.MS_NODEV
@@ -40,23 +35,59 @@ const (
 	shared   = unix.MS_SHARED
 )
 
+type consoleWriter struct {
+	name string
+}
+
+func (w *consoleWriter) Write(b []byte) (int, error) {
+	t := time.Since(start).Seconds()
+	for _, b := range bytes.Split(bytes.TrimRight(b, "\n"), []byte("\n")) {
+		writerChan <- fmt.Sprintf("[ %f ] [%s] %s\n", t, w.name, b)
+	}
+	return len(b), nil
+}
+
+func setupLogging() {
+	// mount proc filesystem
+	mount("proc", "/proc", "proc", nodev|nosuid|noexec|relatime, "")
+
+	f, err := os.Open("/proc/uptime")
+	if err == nil {
+		defer f.Close()
+		d, err := io.ReadAll(f)
+		if err == nil {
+			uptime := bytes.Split(d, []byte(" "))[0]
+			u, err := strconv.ParseFloat(string(uptime), 32)
+			if err == nil {
+				start = start.Add(-time.Duration(int(u*1000)) * time.Millisecond)
+			}
+		}
+	}
+
+	go func() {
+		for {
+			select {
+			case s := <-writerChan:
+				os.Stdout.WriteString(s)
+			}
+		}
+	}()
+}
+
 func mount(source string, target string, fstype string, flags uintptr, data string) {
-	err := unix.Mount(source, target, fstype, flags, data)
-	if err != nil {
+	if err := unix.Mount(source, target, fstype, flags, data); err != nil {
 		logger.Printf("error mounting %s to %s: %v", source, target, err)
 	}
 }
 
 func mkdir(path string, perm os.FileMode) {
-	err := os.MkdirAll(path, perm)
-	if err != nil {
+	if err := os.MkdirAll(path, perm); err != nil {
 		logger.Printf("error making directory %s: %v", path, err)
 	}
 }
 
 func symlink(oldpath string, newpath string) {
-	err := unix.Symlink(oldpath, newpath)
-	if err != nil {
+	if err := unix.Symlink(oldpath, newpath); err != nil {
 		logger.Printf("error making symlink %s: %v", newpath, err)
 	}
 }
@@ -69,22 +100,13 @@ func write(path string, value string) {
 }
 
 func mounts() {
-	mkdir("/mnt", 0755)
-	mkdir("/root", 0700)
-
-	// mount proc filesystem
-	mkdir("/proc", 0755)
-	mount("proc", "/proc", "proc", nodev|nosuid|noexec|relatime, "")
+	//mount("/dev/sda3", "/mnt/overlay", "ext4", nodev|nosuid|noexec|relatime, "")
+	//mount("overlay", "/", "overlay", 0, "lowerdir=/,upperdir=/mnt/overlay/upper,workdir=/mnt/overlay/.work")
 
 	// mount tmpfs for /tmp and /run
-	mkdir("/run", 0755)
 	mount("tmpfs", "/run", "tmpfs", nodev|nosuid|noexec|relatime, "size=10%,mode=755")
-	mkdir("/tmp", 1777)
 	mount("tmpfs", "/tmp", "tmpfs", nodev|nosuid|noexec|relatime, "size=10%,mode=1777")
 
-	// mount tmpfs for /var. This may be overmounted with a persistent filesystem later
-	mkdir("/var", 0755)
-	mount("tmpfs", "/var", "tmpfs", nodev|nosuid|noexec|relatime, "size=50%,mode=755")
 	// add standard directories in /var
 	mkdir("/var/cache", 0755)
 	mkdir("/var/empty", 0555)
@@ -105,7 +127,6 @@ func mounts() {
 	symlink("/proc/kcore", "/dev/kcore")
 
 	// sysfs
-	mkdir("/sys", 0755)
 	mount("sysfs", "/sys", "sysfs", noexec|nosuid|nodev, "")
 
 	mount("cgroup2", "/sys/fs/cgroup", "cgroup2", noexec|nosuid|nodev, "")
@@ -114,15 +135,7 @@ func mounts() {
 type systemService struct {
 	name, desc, path string
 	args             []string
-	running          bool
 	delay            string
-	mx               sync.RWMutex
-}
-
-func (s *systemService) isRunning() bool {
-	s.mx.RLock()
-	defer s.mx.RUnlock()
-	return s.running
 }
 
 func (s *systemService) start() error {
@@ -135,13 +148,9 @@ func (s *systemService) start() error {
 	}
 	cmd := exec.Command(s.path, s.args...)
 	cmd.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/bin:/usr/local/sbin:/opt/bin"}
-	kmsg, err := os.OpenFile("/dev/kmsg", os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		kmsg = os.Stdout
-	}
-
-	cmd.Stdout = kmsg
-	cmd.Stderr = kmsg
+	w := &consoleWriter{name: s.name}
+	cmd.Stdout = w
+	cmd.Stderr = w
 
 	if err := cmd.Start(); err != nil {
 		logger.Fatalln(err)
@@ -159,7 +168,8 @@ func (s *systemService) start() error {
 var systemServices = map[string]*systemService{}
 
 func main() {
-	logger.Println("Starting ecl...")
+	os.Stdout.WriteString("Starting AgileOS...\n")
+	setupLogging()
 
 	logger.Println("Mounting all the things")
 	mounts()

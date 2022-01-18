@@ -1,7 +1,7 @@
 go mod download
 
 cd init
-mkdir pkgroot/sbin
+mkdir -p pkgroot/sbin
 
 CGO_ENABLED=0 go build -ldflags '-s -w' -o pkgroot/sbin/init
 

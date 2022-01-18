@@ -24,13 +24,22 @@ mkfs.ext4 -b 4096 -F ${disk}p2
 
 mkdir /mnt/p1
 mount ${disk}p1 /mnt/p1
+mkdir -p /mnt/p1/EFI/BOOT
+
 mkdir /mnt/p2
 mount ${disk}p2 /mnt/p2
-mkdir /mnt/p2/dev
-mkdir /mnt/p2/sbin
-mkdir /mnt/p2/bin
+mkdir /mnt/p2/dev -m 0755
+mkdir /mnt/p2/sbin -m 0755
+mkdir /mnt/p2/bin -m 0755
+mkdir /mnt/p2/proc -m 0755
+mkdir /mnt/p2/run -m 0755
+mkdir /mnt/p2/root -m 0755
+mkdir /mnt/p2/var -m 0755
+mkdir /mnt/p2/sys -m 0755
+mkdir /mnt/p2/tmp -m 1777
 mkdir -p /mnt/p2/etc/ssl/certs
-mkdir -p /mnt/p1/EFI/BOOT
+mkdir -p /mnt/p2/mnt/overlay
+
 cp /etc/ssl/certs/ca-certificates.crt /mnt/p2/etc/ssl/certs/ca-certificates.crt
 
 echo "AgileOS build status: pulling the kernel"

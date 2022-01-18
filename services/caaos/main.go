@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -31,7 +32,7 @@ var (
 	defaultTimeout = 130 * time.Second
 	etag           = defaultEtag
 
-	logger = log.New(os.Stdout, "[caaos]: ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
+	logger = log.New(os.Stdout, "", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
 )
 
 type attributesJSON struct {
@@ -127,19 +128,34 @@ func withSpecFromBytes(p []byte, clear bool) oci.SpecOpts {
 }
 
 func runContainer(ctx context.Context, client *containerd.Client, ref string, spec string, clear bool) error {
-	logger.Println("pulling image")
-	img, err := client.Pull(ctx, ref, containerd.WithPullUnpack)
+	logger.Printf("Recieved request to run %q", ref)
+
+	var img containerd.Image
+	imgs, err := client.ListImages(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("error listing images: %v", err)
+	}
+	for _, i := range imgs {
+		if i.Name() == ref {
+			logger.Println("Image found in local registry")
+			img = i
+		}
 	}
 
-	name := fmt.Sprintf("%d", time.Now().Unix())
+	if img == nil {
+		logger.Println("Image not found in local registry, pulling now")
+		img, err = client.Pull(ctx, ref, containerd.WithPullUnpack)
+		if err != nil {
+			return fmt.Errorf("error pulling image: %v", err)
+		}
+	}
 
-	logger.Println("creating container")
+	id := fmt.Sprintf("%d", time.Now().Unix())
+	logger.Println("Creating container")
 	container, err := client.NewContainer(
 		ctx,
-		name,
-		containerd.WithNewSnapshot(name, img),
+		id,
+		containerd.WithNewSnapshot(id, img),
 		containerd.WithNewSpec(oci.WithImageConfig(img), withSpecFromBytes([]byte(spec), clear)),
 	)
 	if err != nil {
@@ -147,8 +163,12 @@ func runContainer(ctx context.Context, client *containerd.Client, ref string, sp
 	}
 	defer container.Delete(ctx, containerd.WithSnapshotCleanup)
 
+	s, _ := container.Spec(ctx)
+	d, _ := json.Marshal(s)
+	fmt.Println("Container spec:", string(d))
+
 	// create a new task
-	logger.Println("creating task")
+	logger.Println("Creating task")
 	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStdio))
 	if err != nil {
 		return err
@@ -161,22 +181,22 @@ func runContainer(ctx context.Context, client *containerd.Client, ref string, sp
 	}
 
 	// start the task
-	logger.Println("running task")
+	logger.Println("Running task")
 	if err := task.Start(ctx); err != nil {
 		return err
 	}
 
 	// wait for the task to exit and get the exit status
-	logger.Println("waiting...")
+	logger.Println("Waiting...")
 	status := <-statusC
 	code, _, err := status.Result()
 	if err != nil {
 		return err
 	}
 
-	logger.Println("return code:", code)
+	logger.Println("Return code:", code)
 
-	logger.Println("deleting task")
+	logger.Println("Deleting task")
 	if _, err := task.Delete(ctx); err != nil {
 		logger.Println(err)
 	}
@@ -187,6 +207,57 @@ func runContainer(ctx context.Context, client *containerd.Client, ref string, sp
 	//}
 
 	return nil
+}
+
+type caaosService struct {
+	name, desc, path string
+	args             []string
+	delay            string
+}
+
+var caaosServices = map[string]*caaosService{}
+
+func readConfigs() {
+	logger.Println("Reading service files")
+	svcFileDir := "/etc/init"
+	svcFiles, err := ioutil.ReadDir(svcFileDir)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	for _, svcFile := range svcFiles {
+		if svcFile.IsDir() {
+			continue
+		}
+		file := filepath.Join(svcFileDir, svcFile.Name())
+		f, err := os.Open(file)
+		if err != nil {
+			logger.Printf("Error opening service file %s: %v", file, err)
+			continue
+		}
+		scanner := bufio.NewScanner(f)
+		var svc caaosService
+		for scanner.Scan() {
+			entry := strings.SplitN(scanner.Text(), "=", 2)
+			if len(entry) != 2 {
+				continue
+			}
+			switch entry[0] {
+			case "NAME":
+				svc.name = strings.Trim(entry[1], `"`)
+			case "DESCRIPTION":
+				svc.desc = strings.Trim(entry[1], `"`)
+			case "PATH":
+				svc.path = strings.Trim(entry[1], `"`)
+			case "ARGS":
+				svc.args = strings.Split(strings.Replace(entry[1], " ", "", -1), ",")
+			case "DELAY":
+				svc.delay = strings.Trim(entry[1], `"`)
+			}
+		}
+
+		caaosServices[svcFile.Name()] = &svc
+	}
 }
 
 func main() {

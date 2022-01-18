@@ -1,1 +1,1 @@
-root=/dev/sda2 rw ip=dhcp console=ttyS0,115200n8 elevator=noop
+root=/dev/sda2 rw ip=dhcp console=ttyS0,115200n8 loglevel=4 elevator=noop printk.devkmsg=on
