@@ -40,7 +40,7 @@ processors:
       - action: toggle_scalar_data_type
       - action: add_label
         new_label: version
-        new_value: google-cloud-ops-agent-metrics/2.8.0-bullseye
+        new_value: google-cloud-ops-agent-metrics/agileos
       - action: aggregate_labels
         aggregation_type: sum
         label_set:

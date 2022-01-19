@@ -1,13 +1,13 @@
 steps:
 - name: gcr.io/cloud-builders/go:1.17
-  id: caaos
+  id: otelopscol
   args:
-  - services/caaos/build.sh
+  - caaos/otelopscol/build.sh
   entrypoint: /bin/sh
 - name: gcr.io/cloud-builders/go:1.17
-  id: containerd
+  id: google-osconfig-agent
   args:
-  - services/containerd/build.sh
+  - caaos/google-osconfig-agent/build.sh
   entrypoint: /bin/sh
 options:
   dynamic_substitutions: true
@@ -17,6 +17,6 @@ options:
 artifacts:
   objects:
     location: gs://${_PACKAGE_BUCKET}
-    paths: [services/caaos/caaos.tar.gz, services/containerd/containerd.tar.gz]
+    paths: [caaos/otelopscol/otelopscol.tar.gz, caaos/google-osconfig-agent/google-osconfig-agent.tar.gz]
 substitutions:
     _PACKAGE_BUCKET: ${PROJECT_ID}/ecl

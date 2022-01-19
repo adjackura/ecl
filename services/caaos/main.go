@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,9 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"time"
 
@@ -20,6 +18,7 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/oci"
+	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 const (
@@ -31,6 +30,7 @@ const (
 var (
 	defaultTimeout = 130 * time.Second
 	etag           = defaultEtag
+	writerChan     = make(chan string, 10)
 
 	logger = log.New(os.Stdout, "", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
 )
@@ -40,33 +40,6 @@ type attributesJSON struct {
 	ContainerSpec     string `json:"container-spec"`
 	OverwriteDefaults bool   `json:"overwrite-defaults,string"`
 	StopOnExit        bool   `json:"stop-on-exit,string"`
-}
-
-func runCmd(ctx context.Context, path string, args []string) error {
-	logger.Printf("Running %q with args %q", path, args)
-
-	c := exec.Command(path, args...)
-
-	pr, pw, err := os.Pipe()
-	if err != nil {
-		return err
-	}
-	defer pr.Close()
-
-	c.Stdout = pw
-	c.Stderr = pw
-
-	if err := c.Start(); err != nil {
-		return err
-	}
-	pw.Close()
-
-	in := bufio.NewScanner(pr)
-	for in.Scan() {
-		logger.Printf("%s: %s", filepath.Base(path), in.Text())
-	}
-
-	return c.Wait()
 }
 
 func updateEtag(resp *http.Response) bool {
@@ -115,6 +88,19 @@ func watchMetadata(ctx context.Context) (*attributesJSON, error) {
 	}
 }
 
+type consoleWriter struct {
+	name string
+}
+
+func (w *consoleWriter) Write(b []byte) (int, error) {
+	var msg string
+	for _, b := range bytes.Split(bytes.TrimRight(b, "\n"), []byte("\n")) {
+		msg += fmt.Sprintf("[%s] %s\n", w.name, b)
+	}
+	writerChan <- msg
+	return len(b), nil
+}
+
 func withSpecFromBytes(p []byte, clear bool) oci.SpecOpts {
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
 		if clear {
@@ -127,7 +113,48 @@ func withSpecFromBytes(p []byte, clear bool) oci.SpecOpts {
 	}
 }
 
-func runContainer(ctx context.Context, client *containerd.Client, ref string, spec string, clear bool) error {
+func runContainer(ctx context.Context, container containerd.Container) error {
+	s, _ := container.Spec(ctx)
+	d, _ := json.Marshal(s)
+	fmt.Printf("%q container spec: %s\n", container.ID(), string(d))
+
+	// create a new task
+	w := &consoleWriter{name: container.ID()}
+	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStreams(os.Stdin, w, w)))
+	if err != nil {
+		return err
+	}
+
+	// Setup wait channel
+	statusC, err := task.Wait(ctx)
+	if err != nil {
+		return err
+	}
+
+	// start the task
+	logger.Printf("Starting task for container %q", container.ID())
+	if err := task.Start(ctx); err != nil {
+		return err
+	}
+
+	// wait for the task to exit and get the exit status
+	logger.Printf("Waiting for %q...", container.ID())
+	status := <-statusC
+	code, _, err := status.Result()
+	if err != nil {
+		return err
+	}
+
+	logger.Printf("Return code for %q: %d", container.ID(), code)
+
+	if _, err := task.Delete(ctx); err != nil {
+		logger.Println(err)
+	}
+
+	return nil
+}
+
+func runContainerFromImage(ctx context.Context, client *containerd.Client, ref string, spec string, clear bool) error {
 	logger.Printf("Recieved request to run %q", ref)
 
 	var img containerd.Image
@@ -163,105 +190,119 @@ func runContainer(ctx context.Context, client *containerd.Client, ref string, sp
 	}
 	defer container.Delete(ctx, containerd.WithSnapshotCleanup)
 
-	s, _ := container.Spec(ctx)
-	d, _ := json.Marshal(s)
-	fmt.Println("Container spec:", string(d))
-
-	// create a new task
-	logger.Println("Creating task")
-	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStdio))
-	if err != nil {
-		return err
-	}
-
-	// Setup wait channel
-	statusC, err := task.Wait(ctx)
-	if err != nil {
-		return err
-	}
-
-	// start the task
-	logger.Println("Running task")
-	if err := task.Start(ctx); err != nil {
-		return err
-	}
-
-	// wait for the task to exit and get the exit status
-	logger.Println("Waiting...")
-	status := <-statusC
-	code, _, err := status.Result()
-	if err != nil {
-		return err
-	}
-
-	logger.Println("Return code:", code)
-
-	logger.Println("Deleting task")
-	if _, err := task.Delete(ctx); err != nil {
-		logger.Println(err)
-	}
-
-	// kill the process and get the exit status
-	//if err := task.Kill(ctx, syscall.SIGTERM); err != nil {
-	//	logger.Println(err)
-	//}
-
-	return nil
+	return runContainer(ctx, container)
 }
 
 type caaosService struct {
-	name, desc, path string
-	args             []string
-	delay            string
+	ID, Delay                                                           string
+	FullSpec                                                            bool
+	WithPrivileged, WithAllDevicesAllowed, WithHostDevices, WithNetHost bool
+	Mounts                                                              []specs.Mount
+	OCISpec                                                             json.RawMessage
 }
 
-var caaosServices = map[string]*caaosService{}
+func withHostCACertsFile(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
+	s.Mounts = append(s.Mounts, specs.Mount{
+		Destination: "/etc/ssl/certs/ca-certificates.crt",
+		Type:        "bind",
+		Source:      "/etc/ssl/certs/ca-certificates.crt",
+		Options:     []string{"rbind", "ro"},
+	})
+	return nil
+}
 
-func readConfigs() {
-	logger.Println("Reading service files")
-	svcFileDir := "/etc/init"
+func (s *caaosService) getContainer(ctx context.Context, client *containerd.Client) (containerd.Container, error) {
+	cntrs, err := client.Containers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, cntr := range cntrs {
+		if cntr.ID() == s.ID {
+			return cntr, nil
+		}
+	}
+
+	logger.Printf("Creating container %q", s.ID)
+	specOpts := []oci.SpecOpts{
+		oci.WithDefaultSpec(),
+		oci.WithDefaultUnixDevices,
+		withSpecFromBytes([]byte(s.OCISpec), s.FullSpec),
+		oci.WithMounts(s.Mounts),
+	}
+	if s.WithNetHost {
+		specOpts = append(specOpts, oci.WithHostNamespace(specs.NetworkNamespace), oci.WithHostHostsFile, oci.WithHostResolvconf, withHostCACertsFile)
+	}
+	if s.WithPrivileged {
+		specOpts = append(specOpts, oci.WithPrivileged)
+	}
+	if s.WithAllDevicesAllowed {
+		specOpts = append(specOpts, oci.WithAllDevicesAllowed)
+	}
+	if s.WithHostDevices {
+		specOpts = append(specOpts, oci.WithHostDevices)
+	}
+
+	return client.NewContainer(
+		ctx,
+		s.ID,
+		containerd.WithNewSpec(specOpts...),
+	)
+}
+
+func (s *caaosService) start(ctx context.Context, client *containerd.Client) {
+	if s.Delay != "" {
+		if d, err := time.ParseDuration(s.Delay); err != nil {
+			logger.Println("Error parsing delay:", err)
+		} else {
+			time.Sleep(d)
+		}
+	}
+
+	container, err := s.getContainer(ctx, client)
+	if err != nil {
+		logger.Println("Error:", err)
+		return
+	}
+
+	if err := runContainer(ctx, container); err != nil {
+		logger.Println("Error:", err)
+	}
+}
+
+func loadServices() []*caaosService {
+	svcFileDir := "/etc/caaos"
 	svcFiles, err := ioutil.ReadDir(svcFileDir)
 	if err != nil {
 		logger.Fatal(err)
 	}
 
+	var caaosServices []*caaosService
 	for _, svcFile := range svcFiles {
 		if svcFile.IsDir() {
 			continue
 		}
-		file := filepath.Join(svcFileDir, svcFile.Name())
-		f, err := os.Open(file)
+		data, err := ioutil.ReadFile(filepath.Join(svcFileDir, svcFile.Name()))
 		if err != nil {
-			logger.Printf("Error opening service file %s: %v", file, err)
+			logger.Println(err)
 			continue
 		}
-		scanner := bufio.NewScanner(f)
 		var svc caaosService
-		for scanner.Scan() {
-			entry := strings.SplitN(scanner.Text(), "=", 2)
-			if len(entry) != 2 {
-				continue
-			}
-			switch entry[0] {
-			case "NAME":
-				svc.name = strings.Trim(entry[1], `"`)
-			case "DESCRIPTION":
-				svc.desc = strings.Trim(entry[1], `"`)
-			case "PATH":
-				svc.path = strings.Trim(entry[1], `"`)
-			case "ARGS":
-				svc.args = strings.Split(strings.Replace(entry[1], " ", "", -1), ",")
-			case "DELAY":
-				svc.delay = strings.Trim(entry[1], `"`)
-			}
+		if err := json.Unmarshal(data, &svc); err != nil {
+			logger.Println(err)
+			continue
 		}
 
-		caaosServices[svcFile.Name()] = &svc
+		caaosServices = append(caaosServices, &svc)
 	}
+	return caaosServices
 }
 
 func main() {
 	logger.Println("Starting caaos...")
+	ctx := namespaces.WithNamespace(context.Background(), "caaos")
+
+	logger.Println("Reading caaos service files")
+	svcs := loadServices()
 
 	logger.Println("creating client")
 	client, err := containerd.New("/run/containerd/containerd.sock")
@@ -270,7 +311,20 @@ func main() {
 	}
 	defer client.Close()
 
-	ctx := namespaces.WithNamespace(context.Background(), "caaos")
+	go func() {
+		for {
+			select {
+			case s := <-writerChan:
+				os.Stdout.WriteString(s)
+			}
+		}
+	}()
+
+	logger.Println("Starting caaos services")
+	for _, svc := range svcs {
+		logger.Println("Starting", svc.ID)
+		go svc.start(ctx, client)
+	}
 
 	for {
 		logger.Println("Waiting for metadata...")
@@ -286,7 +340,7 @@ func main() {
 			continue
 		}
 
-		if err := runContainer(ctx, client, md.ContainerRef, md.ContainerSpec, md.OverwriteDefaults); err != nil {
+		if err := runContainerFromImage(ctx, client, md.ContainerRef, md.ContainerSpec, md.OverwriteDefaults); err != nil {
 			logger.Println("Error:", err)
 			time.Sleep(5 * time.Second)
 		}

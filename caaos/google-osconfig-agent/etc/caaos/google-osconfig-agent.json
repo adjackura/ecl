@@ -1,0 +1,51 @@
+{
+    "ContainerReference": "",
+    "ID": "google-osconfig-agent",
+    "FullSpec": false,
+    "OCISpec": {
+        "ociVersion": "1.0.2",
+        "root": {
+            "path": "/opt/caaos/google-osconfig-agent"
+        },
+        "process": {
+            "user": {
+                "uid": 0,
+                "gid": 0
+            },
+            "args": [
+                "/google_osconfig_agent",
+                "-disable_local_logging=true",
+                "-stdout"
+            ],
+            "cwd": "/"
+        },
+        "linux": {
+            "namespaces": [
+                {
+                    "type": "pid"
+                },
+                {
+                    "type": "ipc"
+                },
+                {
+                    "type": "mount"
+                }
+            ]
+        }
+    },
+    "WithPrivileged": true,
+    "WithAllDevicesAllowed": true,
+    "WithHostDevices": true,
+    "WithNetHost": true,
+    "Mounts": [
+        {
+            "destination": "/etc/os-release",
+            "type": "bind",
+            "source": "/etc/os-release",
+            "options": [
+                "rbind",
+                "ro"
+            ]
+        }
+    ]
+}

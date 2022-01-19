@@ -33,6 +33,7 @@ const (
 	relatime = unix.MS_RELATIME
 	remount  = unix.MS_REMOUNT
 	shared   = unix.MS_SHARED
+	bind     = unix.MS_BIND
 )
 
 type consoleWriter struct {
@@ -41,9 +42,11 @@ type consoleWriter struct {
 
 func (w *consoleWriter) Write(b []byte) (int, error) {
 	t := time.Since(start).Seconds()
+	var msg string
 	for _, b := range bytes.Split(bytes.TrimRight(b, "\n"), []byte("\n")) {
-		writerChan <- fmt.Sprintf("[ %f ] [%s] %s\n", t, w.name, b)
+		msg += fmt.Sprintf("[ %f ] [%s] %s\n", t, w.name, b)
 	}
+	writerChan <- msg
 	return len(b), nil
 }
 
@@ -100,8 +103,12 @@ func write(path string, value string) {
 }
 
 func mounts() {
-	//mount("/dev/sda3", "/mnt/overlay", "ext4", nodev|nosuid|noexec|relatime, "")
-	//mount("overlay", "/", "overlay", 0, "lowerdir=/,upperdir=/mnt/overlay/upper,workdir=/mnt/overlay/.work")
+	mount("/dev/sda3", "/mnt", "ext4", nodev|nosuid|relatime, "")
+	mount("/mnt/var", "/var", "", bind, "")
+	mount("/mnt/opt", "/opt", "", bind, "")
+	if err := unix.Unmount("/mnt", 0); err != nil {
+		logger.Printf("error unmounting %s: %v", "/mnt", err)
+	}
 
 	// mount tmpfs for /tmp and /run
 	mount("tmpfs", "/run", "tmpfs", nodev|nosuid|noexec|relatime, "size=10%,mode=755")
@@ -133,19 +140,11 @@ func mounts() {
 }
 
 type systemService struct {
-	name, desc, path string
-	args             []string
-	delay            string
+	name, path string
+	args       []string
 }
 
 func (s *systemService) start() error {
-	if s.delay != "" {
-		delay, err := time.ParseDuration(s.delay)
-		if err != nil {
-			logger.Printf("Error parsing delay for %s: %v", s.name, err)
-		}
-		time.Sleep(delay)
-	}
 	cmd := exec.Command(s.path, s.args...)
 	cmd.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/bin:/usr/local/sbin:/opt/bin"}
 	w := &consoleWriter{name: s.name}
@@ -182,7 +181,7 @@ func main() {
 		}
 	}()
 
-	logger.Println("Reading service files")
+	logger.Println("Reading core service files")
 	svcFileDir := "/etc/init"
 	svcFiles, err := ioutil.ReadDir(svcFileDir)
 	if err != nil {
@@ -209,14 +208,10 @@ func main() {
 			switch entry[0] {
 			case "NAME":
 				svc.name = strings.Trim(entry[1], `"`)
-			case "DESCRIPTION":
-				svc.desc = strings.Trim(entry[1], `"`)
 			case "PATH":
 				svc.path = strings.Trim(entry[1], `"`)
 			case "ARGS":
 				svc.args = strings.Split(strings.Replace(entry[1], " ", "", -1), ",")
-			case "DELAY":
-				svc.delay = strings.Trim(entry[1], `"`)
 			}
 		}
 
