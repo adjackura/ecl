@@ -17,7 +17,7 @@ apt-get install -y \
   liblz4-tool
 apt-get build-dep -y systemd
 
-KERNEL_VERSION='5.15.14'
+KERNEL_VERSION='5.15.16'
 curl -s https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-${KERNEL_VERSION}.tar.xz | tar -Jxf -
 cp linux/.config linux-${KERNEL_VERSION}/.config 
 make -C linux-${KERNEL_VERSION} -j $(nproc) \
