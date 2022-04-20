@@ -82,6 +82,9 @@
           "RawDisk": {
             "Source": "gs://${image_output_bucket}/v${build_date}/disk.tar.gz"
           },
+          "StorageLocations": [
+            "us-central1"
+          ],
           "GuestOsFeatures": [
             "VIRTIO_SCSI_MULTIQUEUE",
             "UEFI_COMPATIBLE",

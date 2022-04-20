@@ -12,6 +12,6 @@ substitutions:
     _IMAGE_OUTPUT_BUCKET: ${PROJECT_ID}/ecl/images
     _PACKAGE_BUCKET: ${PROJECT_ID}/ecl
     _KERNEL_PACKAGE: kernel.tar.gz
-    _PACKAGES: "containerd.tar.gz init.tar.gz caaos.tar.gz otelopscol.tar.gz google-osconfig-agent.tar.gz"
+    _PACKAGES: "containerd.tar.gz init.tar.gz caaos.tar.gz otelopscol.tar.gz google-osconfig-agent.tar.gz hello-world.tar.gz"
 options:
     dynamic_substitutions: true

@@ -1,7 +1,5 @@
 set -ex
 
-apk --no-cache add ca-certificates
-
 cd caaos/google-osconfig-agent
 mkdir -p pkgroot/p2
 mkdir -p pkgroot/p3/opt/caaos/google-osconfig-agent

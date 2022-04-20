@@ -1,5 +1,4 @@
 {
-    "ContainerReference": "",
     "ID": "google-osconfig-agent",
     "FullSpec": false,
     "OCISpec": {
@@ -16,6 +15,9 @@
                 "/google_osconfig_agent",
                 "-disable_local_logging=true",
                 "-stdout"
+            ],
+            "env": [
+                "OSCONFIG_DISABLE_INVENTORY_WRITE=true"
             ],
             "cwd": "/"
         },

@@ -17,6 +17,6 @@ options:
 artifacts:
   objects:
     location: gs://${_PACKAGE_BUCKET}
-    paths: [caaos/otelopscol/otelopscol.tar.gz, caaos/google-osconfig-agent/google-osconfig-agent.tar.gz]
+    paths: [caaos/otelopscol/otelopscol.tar.gz, caaos/google-osconfig-agent/google-osconfig-agent.tar.gz, caaos/hello-world/hello-world.tar.gz]
 substitutions:
     _PACKAGE_BUCKET: ${PROJECT_ID}/ecl
