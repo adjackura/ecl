@@ -20,7 +20,7 @@
     "db": "MIIFKTCCAxGgAwIBAgIUL+6Z9pPyLQkHO/cczxM+hfQ2qTwwDQYJKoZIhvcNAQELBQAwJDEiMCAGA1UEAwwZbXkgU2lnbmF0dXJlIERhdGFiYXNlIGtleTAeFw0yMjA0MjgyMDEwMzVaFw0zMjA0MjUyMDEwMzVaMCQxIjAgBgNVBAMMGW15IFNpZ25hdHVyZSBEYXRhYmFzZSBrZXkwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQCUWDFp/mUcIy+wbVPuqwWVeIR+hMahvKVDvV1c07FssjL/olGn6X2poyirH3JiIHasUGJbC62ersLj4oIBwmnolrNRE1Wdoi+cWZZLp7XuAyHALJOSIDtLjoeEZWVPVAAWoWMYTvJRjvnskdJ3E/Ia6jf4X4zR7sAgV5gAgFi7LRYe8klU20qyIsNAJMuvNoqotOqmMOzF1OmTxY+05zLlsc3zgoM7X6boe/bmrts6iaPIXYcZOVX5eu661apuJwYFkiCfwHyiRBQHMkc4X+uOXi4xWde6eY0ZsjX6DNvtvJvLTaXMeoK8cViKe1PyWK6jJ9V9rc5lDJRFxr7xHbP90Bl0Qix42INry32Te4KQGNhC01K0pDPxhqIOf51y+SgeAHdgQtUA0uR6hRNxaHWLT5P2Jcjiu3LDitnanVscFUk8yT1mMkkFG9FmDLWKarH3l1zSILgilyBdLEHzbiqUsUiJCHZOw0isg4WNk89sLF7IG2cn2G4GWLVrcaKc5Yptm4rcfEW6wkPz5Bc2rrwAMEISEK4Tpdax1xW+Flc15n5OCE0EJybkdtg1n1kDwelEV1ZT4aNzMBny3DFdN6sKud0VAs3RLRDdFbDnPkx+HpMf5YcFHHNLb2N3QYMJjQaF0IlazJ6XbdY1v3SeypC61efJgxWIR6YHqJFt9LdNBQIDAQABo1MwUTAdBgNVHQ4EFgQU7q7ziYsTFOWOa7WIfzlJbOp3rXswHwYDVR0jBBgwFoAU7q7ziYsTFOWOa7WIfzlJbOp3rXswDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAgEAjosGtOHqaRRmKfIH1/qTpuLMmTpHLnEQpDHiZpjN8z/0mcQXGYhKHQp6AU2d4n8dSrfGoxUzKwRi+HrXCSBKHukEwOh8VZ9CKJzr9YIjHQE5buTSQQDKSrbpgupmEfm7Ujz0Jm1sOdhxE36RR8TuSzzkcI9+YUNYJvUbOxFiamvl4kClwfg7geIVNh04Qt1LfwcS4W63pVaYk7ZUI0FfBv01fXCuXPUaInr25dAZ0cnP20TrzOqk8jihesFU7cXHpzVA2kNc14QtlOMmuStd8cNuPfs1Zykh2kCp0ocJQIsRAVfx9VlDvj6wSA8UlmJh6QJQd5vYPIKHczEhkJkeg+o0hKvO7qQNZ8XYw8+6aTzCQiiyC73f/2Xe8grnaIfX5QGCc/jU7o7Pkdb7Kv80F/oY5perXZcvsZ6mHzQRLADUm8VdIXEqjYBc2+8gGZwvjfRpNrXsi86MTB8BTtwaDqKPJdJdk7xr8mfVf5eP6LcMzXnWf5eZH5Pp0LUzZXjZTogBjucwyw4XN8u8nAFHXb6UFZ+/8/FPtSPdK3O1cIBlXLr0OzNyMrSWh7Ejf4tPuZTrz7hpR8QxdbIZbqKaZ0kMqFIBLsx1o/HjJM3IUiJoeoRouY2sMUwDv0bAcTsd06LdiQHuEh7Ugb7/XQy5lspMCCLxYI+2FXResGD9Dp8="
   },
   "Sources": {
-    "build.sh": "./build-image.sh",
+    "build.sh": "./daisy-build-image.sh",
     "packages": "/workspace/packages",
     "certs": "/workspace/certs",
     "linuxx64.efi.stub": "/workspace/linuxx64.efi.stub"
@@ -46,7 +46,7 @@
             }
           ],
           "MachineType": "e2-highcpu-8",
-          "StartupScript": "daisy-build-image.sh",
+          "StartupScript": "build.sh",
           "Metadata": {
             "kernel-package": "${kernel_package}",
             "packages": "${packages}"
