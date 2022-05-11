@@ -34,8 +34,7 @@ make -C linux-${KERNEL_VERSION} -j $(nproc) \
   HOSTLD=ld.lld-13
 
 mkdir pkgroot
-#cp "linux-${KERNEL_VERSION}/arch/x86_64/boot/bzImage" pkgroot/
-cp "tip-3.1/arch/x86_64/boot/bzImage" pkgroot/
+cp "linux-${KERNEL_VERSION}/arch/x86_64/boot/bzImage" pkgroot/
   
 mkdir -p /workspace/packages
 tar -czvf /workspace/packages/kernel.tar.gz -C pkgroot .
