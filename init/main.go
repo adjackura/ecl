@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	writerChan = make(chan string, 10)
+	writerChan = make(chan string, 100)
 	logger     = log.New(&consoleWriter{name: "init"}, "", log.LstdFlags|log.Lmicroseconds)
 	start      = time.Now()
 )
@@ -103,7 +103,7 @@ func write(path string, value string) {
 }
 
 func mounts() {
-	mount("/dev/sda3", "/mnt", "ext4", nodev|nosuid|relatime, "")
+	mount("/dev/sda4", "/mnt", "ext4", nodev|nosuid|relatime, "")
 	mount("/mnt/var", "/var", "", bind, "")
 	mount("/mnt/opt", "/opt", "", bind, "")
 	if err := unix.Unmount("/mnt", 0); err != nil {
@@ -169,6 +169,8 @@ var systemServices = map[string]*systemService{}
 func main() {
 	os.Stdout.WriteString("Starting AgileOS...\n")
 	setupLogging()
+	cmdline, _ := ioutil.ReadFile("/proc/cmdline")
+	logger.Println("Command line:", string(cmdline))
 
 	logger.Println("Mounting all the things")
 	mounts()

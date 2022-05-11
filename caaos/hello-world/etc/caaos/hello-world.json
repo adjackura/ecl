@@ -1,0 +1,24 @@
+{
+    "ID": "hello-world",
+    "FullSpec": false,
+    "OCISpec": {
+        "ociVersion": "1.0.2",
+        "root": {
+            "path": "/opt/caaos/hello-world"
+        },
+        "process": {
+            "user": {
+                "uid": 0,
+                "gid": 0
+            },
+            "args": [
+                "/hello_world"
+            ],
+            "cwd": "/"
+        }
+    },
+    "WithPrivileged": false,
+    "WithAllDevicesAllowed": false,
+    "WithHostDevices": false,
+    "WithNetHost": true
+}

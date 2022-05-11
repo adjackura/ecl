@@ -1,1 +1,0 @@
-root=/dev/sda2 ro ip=dhcp console=ttyS0,115200n8 loglevel=4 elevator=noop printk.devkmsg=on
