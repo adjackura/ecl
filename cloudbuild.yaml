@@ -1,23 +1,11 @@
 timeout: 1800s
 
 steps:
-- name: gcr.io/cloud-builders/go:1.18
-  id: init
+- name: launcher.gcr.io/google/debian11
+  id: efi-stub
   args:
-  - init/build.sh
-  entrypoint: /bin/sh
-  waitFor: ['-']
-- name: gcr.io/cloud-builders/go:1.18
-  id: caaos
-  args:
-  - services/caaos/build.sh
-  entrypoint: /bin/sh
-  waitFor: ['-']
-- name: gcr.io/cloud-builders/go:1.17
-  id: containerd
-  args:
-  - services/containerd/build.sh
-  entrypoint: /bin/sh
+  - build/build-efi-stub.sh
+  entrypoint: /bin/bash
   waitFor: ['-']
 - name: launcher.gcr.io/google/debian11
   id: linux
@@ -26,41 +14,53 @@ steps:
   entrypoint: /bin/bash
   waitFor: ['-']
 - name: gcr.io/cloud-builders/go:1.18
+  id: init
+  args:
+  - init/build.sh
+  entrypoint: /bin/sh
+  waitFor: ['efi-stub']
+- name: gcr.io/cloud-builders/go:1.18
+  id: caaos
+  args:
+  - services/caaos/build.sh
+  entrypoint: /bin/sh
+  waitFor: ['efi-stub']
+- name: gcr.io/cloud-builders/go:1.17
+  id: containerd
+  args:
+  - services/containerd/build.sh
+  entrypoint: /bin/sh
+  waitFor: ['efi-stub']
+- name: gcr.io/cloud-builders/go:1.18
   id: otelopscol
   args:
   - caaos/otelopscol/build.sh
   entrypoint: /bin/sh
-  waitFor: ['-']
+  waitFor: ['efi-stub']
 - name: gcr.io/cloud-builders/go:1.18
   id: google-osconfig-agent
   args:
   - caaos/google-osconfig-agent/build.sh
   entrypoint: /bin/sh
-  waitFor: ['-']
+  waitFor: ['efi-stub']
 - name: gcr.io/cloud-builders/go:1.18
   id: hello-world
   args:
   - caaos/hello-world/build.sh
   entrypoint: /bin/sh
-  waitFor: ['-']
+  waitFor: ['efi-stub']
 - name: gcr.io/cloud-builders/go:1.18
   id: daisy
   args:
   - build/build-daisy.sh
   entrypoint: /bin/sh
-  waitFor: ['-']
-- name: launcher.gcr.io/google/debian11
-  id: efi-stub
-  args:
-  - build/build-efi-stub.sh
-  entrypoint: /bin/bash
-  waitFor: ['-']
+  waitFor: ['efi-stub']
 - name: launcher.gcr.io/google/debian11
   id: sbkeys
   args:
   - build/generate-sbkeys.sh
   entrypoint: /bin/bash
-  waitFor: ['-']
+  waitFor: ['efi-stub']
 - name: launcher.gcr.io/google/debian11
   id: image
   entrypoint: /bin/bash

@@ -1,10 +1,11 @@
 set -ex
 
 apt-get update 
-apt-get install -y curl gnupg2 software-properties-common
+apt-get install -y curl gnupg2 lsb-release
+echo "deb [arch=amd64] http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs)-13 main" >> /etc/apt/sources.list
 curl -sSL https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
-add-apt-repository -u "deb [arch=amd64] http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs)-13 main"
-add-apt-repository -s -u "deb http://deb.debian.org/debian $(lsb_release -cs) main"
+
+apt-get update 
 apt-get install -y \
   clang-13 \
   llvm-13 \
